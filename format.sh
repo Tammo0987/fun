@@ -1,0 +1,1 @@
+antlr-format ./src/main/antlr/Fun.g4
