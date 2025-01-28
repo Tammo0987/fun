@@ -118,7 +118,7 @@ public class TypeAnnotate {
                 yield new TypedTreeNode.BinaryArithmeticExpression(
                         new Type.TypeVariable(),
                         annotateTypesAtTerm(binaryArithmeticExpression.left()),
-                        annotateTypesAtTerm(binaryArithmeticExpression.right()),
+                        anonotateTypesAtArithmeticExpression(binaryArithmeticExpression.right()),
                         operation
                 );
             }
@@ -137,7 +137,7 @@ public class TypeAnnotate {
                 yield new TypedTreeNode.BinaryTerm(
                         new Type.TypeVariable(),
                         annotateTypesAtFactor(binaryTerm.left()),
-                        annotateTypesAtFactor(binaryTerm.right()),
+                        annotateTypesAtTerm(binaryTerm.right()),
                         operation
                 );
             }

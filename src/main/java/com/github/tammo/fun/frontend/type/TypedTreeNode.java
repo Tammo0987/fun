@@ -107,7 +107,7 @@ public sealed interface TypedTreeNode {
     record BinaryArithmeticExpression(
             Type type,
             Term left,
-            Term right,
+            ArithmeticExpression right,
             ArithmeticExpression.Operation operation
     ) implements ArithmeticExpression {
 
@@ -124,7 +124,7 @@ public sealed interface TypedTreeNode {
 
     }
 
-    record BinaryTerm(Type type, Factor left, Factor right, Term.Operation operation) implements Term {
+    record BinaryTerm(Type type, Factor left, Term right, Term.Operation operation) implements Term {
 
     }
 

@@ -145,25 +145,25 @@ public class ASTBuilder extends FunBaseVisitor<SyntaxNode> {
 
     @Override
     public SyntaxNode visitSimpleExpression(FunParser.SimpleExpressionContext ctx) {
-        if (ctx.term().size() > 1) {
+        if (ctx.simpleExpression(0) != null) {
             Expression.ArithmeticExpression.Operation operation = switch (ctx.operand.getText()) {
                 case "+" -> Expression.ArithmeticExpression.Operation.ADD;
                 case "-" -> Expression.ArithmeticExpression.Operation.SUBTRACT;
                 default -> throw new IllegalStateException("Unexpected value: " + ctx.operand.getText());
             };
             return new Expression.BinaryArithmeticExpression(
-                    (Expression.Term) visitTerm(ctx.term(0)),
-                    (Expression.Term) visitTerm(ctx.term(1)),
+                    (Expression.Term) visitTerm(ctx.term()),
+                    (Expression.ArithmeticExpression) visitSimpleExpression(ctx.simpleExpression().getFirst()),
                     operation
             );
         } else {
-            return new Expression.Operand((Expression.Term) visitTerm(ctx.term(0)));
+            return new Expression.Operand((Expression.Term) visitTerm(ctx.term()));
         }
     }
 
     @Override
     public SyntaxNode visitTerm(FunParser.TermContext ctx) {
-        if (ctx.factor().size() > 1) {
+        if (ctx.term(0) != null) {
             final var operation = switch (ctx.operand.getText()) {
                 case "*" -> Expression.Term.Operation.MULTIPLY;
                 case "/" -> Expression.Term.Operation.DIVIDE;
@@ -171,12 +171,12 @@ public class ASTBuilder extends FunBaseVisitor<SyntaxNode> {
             };
 
             return new Expression.BinaryTerm(
-                    (Expression.Factor) visitFactor(ctx.factor(0)),
-                    (Expression.Factor) visitFactor(ctx.factor(1)),
+                    (Expression.Factor) visitFactor(ctx.factor()),
+                    (Expression.Term) visitTerm(ctx.term(0)),
                     operation
             );
         } else {
-            return new Expression.SimpleTerm((Expression.Factor) visitFactor(ctx.factor(0)));
+            return new Expression.SimpleTerm((Expression.Factor) visitFactor(ctx.factor()));
         }
     }
 
@@ -192,5 +192,7 @@ public class ASTBuilder extends FunBaseVisitor<SyntaxNode> {
 
         return super.visitFactor(ctx);
     }
+
+
 }
 

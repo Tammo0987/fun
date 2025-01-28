@@ -18,7 +18,7 @@ class ArithmeticExpressionWriter {
             case Operand operand -> writeTerm(operand.left());
             case BinaryArithmeticExpression binaryExpression -> {
                 writeTerm(binaryExpression.left());
-                writeTerm(binaryExpression.right());
+                writeArithmeticExpression(binaryExpression.right());
                 switch (binaryExpression.operation()) {
                     case ADD -> methodVisitor.visitInsn(Opcodes.IADD);
                     case SUBTRACT -> methodVisitor.visitInsn(Opcodes.ISUB);
@@ -32,7 +32,7 @@ class ArithmeticExpressionWriter {
             case SimpleTerm simpleTerm -> writeFactor(simpleTerm.left());
             case BinaryTerm binaryTerm -> {
                 writeFactor(binaryTerm.left());
-                writeFactor(binaryTerm.right());
+                writeTerm(binaryTerm.right());
                 switch (binaryTerm.operation()) {
                     case MULTIPLY -> methodVisitor.visitInsn(Opcodes.IMUL);
                     case DIVIDE -> methodVisitor.visitInsn(Opcodes.IDIV);

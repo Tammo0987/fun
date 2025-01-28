@@ -28,7 +28,7 @@ public sealed interface Expression extends SyntaxNode {
 
     record BinaryArithmeticExpression(
             Term left,
-            Term right,
+            ArithmeticExpression right,
             ArithmeticExpression.Operation operation
     ) implements ArithmeticExpression {
 
@@ -45,7 +45,7 @@ public sealed interface Expression extends SyntaxNode {
 
     }
 
-    record BinaryTerm(Factor left, Factor right, Term.Operation operation) implements Term {
+    record BinaryTerm(Factor left, Term right, Term.Operation operation) implements Term {
 
     }
 

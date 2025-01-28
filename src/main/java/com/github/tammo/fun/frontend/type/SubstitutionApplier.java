@@ -146,7 +146,7 @@ public class SubstitutionApplier {
                         yield new BinaryArithmeticExpression(
                                 newType,
                                 (TypedTreeNode.Term) newLeft,
-                                (TypedTreeNode.Term) newRight,
+                                (TypedTreeNode.ArithmeticExpression) newRight,
                                 bae.operation()
                         );
                     }
@@ -167,7 +167,7 @@ public class SubstitutionApplier {
                         yield new TypedTreeNode.BinaryTerm(
                                 newType,
                                 (TypedTreeNode.Factor) newLeft,
-                                (TypedTreeNode.Factor) newRight,
+                                (TypedTreeNode.Term) newRight,
                                 binaryTerm.operation()
                         );
                     }

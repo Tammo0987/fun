@@ -76,11 +76,11 @@ printExpression
     ;
 
 simpleExpression
-    : term (operand = (PLUS | MINUS) term)*
+    : term (operand = (PLUS | MINUS) simpleExpression)*
     ;
 
 term
-    : factor (operand = (MULTIPLY | DIVIDE) factor)*
+    : factor (operand = (MULTIPLY | DIVIDE) term)*
     ;
 
 factor
