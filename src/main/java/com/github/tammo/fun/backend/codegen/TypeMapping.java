@@ -1,4 +1,4 @@
-package com.github.tammo.fun.gen;
+package com.github.tammo.fun.backend.codegen;
 
 public class TypeMapping {
 

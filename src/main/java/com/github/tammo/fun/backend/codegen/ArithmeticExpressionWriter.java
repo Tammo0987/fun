@@ -1,6 +1,6 @@
-package com.github.tammo.fun.gen;
+package com.github.tammo.fun.backend.codegen;
 
-import com.github.tammo.fun.ast.Expression;
+import com.github.tammo.fun.frontend.ast.Expression;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 

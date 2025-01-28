@@ -1,6 +1,6 @@
-package com.github.tammo.fun.parse;
+package com.github.tammo.fun.frontend.parse;
 
-import com.github.tammo.fun.ast.SyntaxNode.CompilationUnit;
+import com.github.tammo.fun.frontend.ast.SyntaxNode.CompilationUnit;
 
 /**
  * Parses input to an abstract syntax tree as {@link CompilationUnit}.

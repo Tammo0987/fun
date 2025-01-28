@@ -1,8 +1,8 @@
-package com.github.tammo.fun.parse;
+package com.github.tammo.fun.frontend.parse;
 
 import com.github.tammo.FunLexer;
 import com.github.tammo.FunParser;
-import com.github.tammo.fun.ast.SyntaxNode.CompilationUnit;
+import com.github.tammo.fun.frontend.ast.SyntaxNode.CompilationUnit;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;

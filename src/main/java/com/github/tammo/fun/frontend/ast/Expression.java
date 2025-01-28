@@ -1,4 +1,4 @@
-package com.github.tammo.fun.ast;
+package com.github.tammo.fun.frontend.ast;
 
 import java.util.List;
 
@@ -34,7 +34,7 @@ public sealed interface Expression extends SyntaxNode {
 
     }
 
-    sealed interface Term extends SyntaxNode {
+    sealed interface Term extends Expression {
         enum Operation {
             MULTIPLY,
             DIVIDE
@@ -49,7 +49,7 @@ public sealed interface Expression extends SyntaxNode {
 
     }
 
-    sealed interface Factor extends SyntaxNode {
+    sealed interface Factor extends Expression {
 
     }
 

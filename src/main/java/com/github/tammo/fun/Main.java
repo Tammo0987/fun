@@ -1,9 +1,9 @@
 package com.github.tammo.fun;
 
-import com.github.tammo.fun.gen.ByteCodeGenerator;
-import com.github.tammo.fun.gen.CodeGenerator;
-import com.github.tammo.fun.parse.AntlrParser;
-import com.github.tammo.fun.parse.Parser;
+import com.github.tammo.fun.backend.codegen.ByteCodeGenerator;
+import com.github.tammo.fun.backend.codegen.CodeGenerator;
+import com.github.tammo.fun.frontend.parse.AntlrParser;
+import com.github.tammo.fun.frontend.parse.Parser;
 
 import java.io.IOException;
 import java.nio.file.Files;

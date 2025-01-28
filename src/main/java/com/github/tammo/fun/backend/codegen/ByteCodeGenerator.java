@@ -1,12 +1,11 @@
-package com.github.tammo.fun.gen;
+package com.github.tammo.fun.backend.codegen;
 
-import com.github.tammo.fun.ast.Expression;
-import com.github.tammo.fun.ast.SyntaxNode;
-import com.github.tammo.fun.ast.SyntaxNode.CompilationUnit;
-import com.github.tammo.fun.ast.SyntaxNode.ParameterList;
+import com.github.tammo.fun.frontend.ast.Expression;
+import com.github.tammo.fun.frontend.ast.SyntaxNode;
+import com.github.tammo.fun.frontend.ast.SyntaxNode.CompilationUnit;
+import com.github.tammo.fun.frontend.ast.SyntaxNode.ParameterList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 import java.util.stream.Collectors;
 

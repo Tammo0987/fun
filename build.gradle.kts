@@ -17,6 +17,12 @@ dependencies {
     implementation("org.ow2.asm:asm:9.7.1")
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
 tasks.generateGrammarSource {
     arguments.addAll(listOf("-visitor", "-package", "com.github.tammo"))
 

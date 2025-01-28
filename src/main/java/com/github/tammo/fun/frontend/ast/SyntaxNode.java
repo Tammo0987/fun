@@ -1,4 +1,4 @@
-package com.github.tammo.fun.ast;
+package com.github.tammo.fun.frontend.ast;
 
 import java.util.List;
 import java.util.Optional;
