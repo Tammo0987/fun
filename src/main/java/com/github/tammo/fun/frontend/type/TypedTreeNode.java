@@ -1,17 +1,35 @@
 package com.github.tammo.fun.frontend.type;
 
 import java.util.List;
+import java.util.Optional;
 
 public sealed interface TypedTreeNode {
 
-    record NotImplemented() implements Expression {}
-
-    record CompilationUnit(ObjectDeclaration objectDeclaration) implements TypedTreeNode {
+    record NotImplemented() implements Expression {
+        @Override
+        public Type type() {
+            return Type.Types.Unit;
+        }
     }
 
-    record ObjectDeclaration(
+    record CompilationUnit(
+            Optional<NamespaceDeclaration> namespaceDeclaration,
+            ClassDeclaration classDeclaration
+    ) implements TypedTreeNode {
+
+        public String fullyQualifiedClassName() {
+            final var qualifiedNamespaceName = namespaceDeclaration.map(NamespaceDeclaration::identifier)
+                    .map(i -> i + "/")
+                    .orElse("");
+            return qualifiedNamespaceName + classDeclaration.name();
+        }
+
+    }
+
+    record ClassDeclaration(
             String name,
-            List<EffectDeclaration> effects
+            List<EffectDeclaration> effects,
+            List<FunctionDeclaration> functions
     ) implements TypedTreeNode {
 
     }
@@ -28,20 +46,51 @@ public sealed interface TypedTreeNode {
 
     }
 
+    record FunctionDeclaration(
+            TypedIdentifier name,
+            List<Parameter> parameters,
+            Expression body
+    ) implements TypedTreeNode {
+
+    }
+
     record Parameter(TypedIdentifier identifier) implements TypedTreeNode {
 
     }
 
     sealed interface Expression extends TypedTreeNode {
-
+        Type type();
     }
 
-    record StringLiteral(String value, FunType.StringType type) implements Expression {
+    record PrintExpression(Expression expression) implements Expression {
+        @Override
+        public Type type() {
+            return Type.Types.Unit;
+        }
+    }
 
+    record StringLiteral(String value) implements Expression {
+        @Override
+        public Type type() {
+            return Type.Types.String;
+        }
     }
 
     record FunctionCall(TypedIdentifier name, List<Expression> arguments) implements Expression {
 
+        @Override
+        public Type type() {
+            if (arguments.isEmpty()) {
+                return name.type();
+            } else {
+                final var reversedArguments = List.copyOf(arguments).reversed();
+                Type start = name.type();
+                for (final var argument : reversedArguments) {
+                    start = new Type.FunctionType(argument.type(), start);
+                }
+                return start;
+            }
+        }
     }
 
     sealed interface ArithmeticExpression extends Expression {
@@ -51,12 +100,12 @@ public sealed interface TypedTreeNode {
         }
     }
 
-    record Operand(FunType type, Term left) implements ArithmeticExpression {
+    record Operand(Type type, Term left) implements ArithmeticExpression {
 
     }
 
     record BinaryArithmeticExpression(
-            FunType type,
+            Type type,
             Term left,
             Term right,
             ArithmeticExpression.Operation operation
@@ -71,11 +120,11 @@ public sealed interface TypedTreeNode {
         }
     }
 
-    record SimpleTerm(FunType type, Factor left) implements Term {
+    record SimpleTerm(Type type, Factor left) implements Term {
 
     }
 
-    record BinaryTerm(FunType type, Factor left, Factor right, Term.Operation operation) implements Term {
+    record BinaryTerm(Type type, Factor left, Factor right, Term.Operation operation) implements Term {
 
     }
 
@@ -83,15 +132,25 @@ public sealed interface TypedTreeNode {
 
     }
 
-    record IntegerLiteral(int literal, FunType.IntType type) implements Factor {
+    record IntegerLiteral(int literal) implements Factor {
+
+        @Override
+        public Type type() {
+            return Type.Types.Int;
+        }
 
     }
 
     record ParenthesizedExpression(ArithmeticExpression arithmeticExpression) implements Factor {
 
+        @Override
+        public Type type() {
+            return arithmeticExpression.type();
+        }
+
     }
 
-    record TypedIdentifier(String identifier, FunType type) implements TypedTreeNode {
+    record TypedIdentifier(String identifier, Type type) implements TypedTreeNode {
 
     }
 

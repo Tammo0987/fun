@@ -4,6 +4,8 @@ import com.github.tammo.fun.backend.codegen.ByteCodeGenerator;
 import com.github.tammo.fun.backend.codegen.CodeGenerator;
 import com.github.tammo.fun.frontend.parse.AntlrParser;
 import com.github.tammo.fun.frontend.parse.Parser;
+import com.github.tammo.fun.frontend.type.TypeChecker;
+import com.github.tammo.fun.frontend.type.TypedTreeNode;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +19,10 @@ public class Main {
         final Parser parser = new AntlrParser();
         final CodeGenerator backendCodeGenerator = new ByteCodeGenerator();
         final var compilationUnit = parser.parse(input);
-        final var code = backendCodeGenerator.generate(compilationUnit);
+
+        final var typedTree = TypeChecker.typeCheck(compilationUnit);
+
+        final var code = backendCodeGenerator.generate((TypedTreeNode.CompilationUnit) typedTree);
 
         try {
             writeCodeToFile(compilationUnit.fullyQualifiedClassName() + ".class", code);

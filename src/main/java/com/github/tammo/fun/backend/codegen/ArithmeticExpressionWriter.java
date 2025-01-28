@@ -1,6 +1,7 @@
 package com.github.tammo.fun.backend.codegen;
 
-import com.github.tammo.fun.frontend.ast.Expression;
+import com.github.tammo.fun.frontend.type.TypedTreeNode;
+import com.github.tammo.fun.frontend.type.TypedTreeNode.*;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -12,10 +13,10 @@ class ArithmeticExpressionWriter {
         this.methodVisitor = methodVisitor;
     }
 
-    void writeArithmeticExpression(Expression.ArithmeticExpression expression) {
+    void writeArithmeticExpression(TypedTreeNode.ArithmeticExpression expression) {
         switch (expression) {
-            case Expression.Operand operand -> writeTerm(operand.left());
-            case Expression.BinaryArithmeticExpression binaryExpression -> {
+            case Operand operand -> writeTerm(operand.left());
+            case BinaryArithmeticExpression binaryExpression -> {
                 writeTerm(binaryExpression.left());
                 writeTerm(binaryExpression.right());
                 switch (binaryExpression.operation()) {
@@ -26,10 +27,10 @@ class ArithmeticExpressionWriter {
         }
     }
 
-    private void writeTerm(Expression.Term term) {
+    void writeTerm(TypedTreeNode.Term term) {
         switch (term) {
-            case Expression.SimpleTerm simpleTerm -> writeFactor(simpleTerm.left());
-            case Expression.BinaryTerm binaryTerm -> {
+            case SimpleTerm simpleTerm -> writeFactor(simpleTerm.left());
+            case BinaryTerm binaryTerm -> {
                 writeFactor(binaryTerm.left());
                 writeFactor(binaryTerm.right());
                 switch (binaryTerm.operation()) {
@@ -40,10 +41,10 @@ class ArithmeticExpressionWriter {
         }
     }
 
-    private void writeFactor(Expression.Factor factor) {
+    void writeFactor(Factor factor) {
         switch (factor) {
-            case Expression.IntegerLiteral integerLiteral -> methodVisitor.visitLdcInsn(integerLiteral.literal());
-            case Expression.ParenthesizedExpression parenthesizedExpression ->
+            case IntegerLiteral integerLiteral -> methodVisitor.visitLdcInsn(integerLiteral.literal());
+            case ParenthesizedExpression parenthesizedExpression ->
                     writeArithmeticExpression(parenthesizedExpression.arithmeticExpression());
         }
     }

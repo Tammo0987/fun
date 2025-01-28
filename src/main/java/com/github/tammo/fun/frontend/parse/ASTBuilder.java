@@ -4,6 +4,7 @@ import com.github.tammo.FunBaseVisitor;
 import com.github.tammo.FunParser;
 import com.github.tammo.fun.frontend.ast.Expression;
 import com.github.tammo.fun.frontend.ast.SyntaxNode;
+import com.github.tammo.fun.frontend.ast.SyntaxNode.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayList;

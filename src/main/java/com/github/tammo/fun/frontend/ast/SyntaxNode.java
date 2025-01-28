@@ -5,8 +5,6 @@ import java.util.Optional;
 import java.util.Set;
 
 public sealed interface SyntaxNode permits Expression,
-        Expression.Factor,
-        Expression.Term,
         SyntaxNode.ClassDeclaration,
         SyntaxNode.CompilationUnit,
         SyntaxNode.EffectDeclaration,

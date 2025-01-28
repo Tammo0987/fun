@@ -15,13 +15,22 @@ public class TypeAnnotate {
                         .map(TypeAnnotate::annotateTypes)
                         .map(TypedTreeNode.EffectDeclaration.class::cast)
                         .toList();
-                yield new TypedTreeNode.ObjectDeclaration(
+                List<TypedTreeNode.FunctionDeclaration> functionDeclarations = classDeclaration.functionDeclarations()
+                        .stream()
+                        .map(TypeAnnotate::annotateTypes)
+                        .map(TypedTreeNode.FunctionDeclaration.class::cast)
+                        .toList();
+                yield new TypedTreeNode.ClassDeclaration(
                         classDeclaration.name(),
-                        effectDeclarations
+                        effectDeclarations,
+                        functionDeclarations
                 );
             }
             case SyntaxNode.CompilationUnit compilationUnit -> new TypedTreeNode.CompilationUnit(
-                    ((TypedTreeNode.ObjectDeclaration) annotateTypes(compilationUnit.classDeclaration()))
+                    compilationUnit.namespaceDeclaration()
+                            .map(SyntaxNode.NamespaceDeclaration::qualifierIdentifier)
+                            .map(TypedTreeNode.NamespaceDeclaration::new),
+                    ((TypedTreeNode.ClassDeclaration) annotateTypes(compilationUnit.classDeclaration()))
             );
             case SyntaxNode.EffectDeclaration effectDeclaration -> {
                 List<TypedTreeNode.Parameter> typedParameter = effectDeclaration.parameters().parameters().stream()
@@ -29,8 +38,16 @@ public class TypeAnnotate {
                         .map(TypedTreeNode.Parameter.class::cast)
                         .toList();
                 TypedTreeNode.Expression typedBody = (TypedTreeNode.Expression) annotateTypes(effectDeclaration.body());
+
+                Type effectType = Type.fromString(effectDeclaration.returnType());
+
+                for (int i = effectDeclaration.parameters().parameters().size() - 1; i >= 0; i--) {
+                    TypedTreeNode.Parameter parameter = typedParameter.get(i);
+                    effectType = new Type.FunctionType(parameter.identifier().type(), effectType);
+                }
+
                 yield new TypedTreeNode.EffectDeclaration(
-                        new TypedTreeNode.TypedIdentifier(effectDeclaration.name(), new FunType.TypeVariable()),
+                        new TypedTreeNode.TypedIdentifier(effectDeclaration.name(), effectType),
                         typedParameter,
                         typedBody
                 );
@@ -40,10 +57,30 @@ public class TypeAnnotate {
                     new TypedTreeNode.NamespaceDeclaration(namespaceDeclaration.qualifierIdentifier());
             case SyntaxNode.UseDeclaration ignore -> new TypedTreeNode.NotImplemented();
             case SyntaxNode.Parameter parameter -> new TypedTreeNode.Parameter(
-                    new TypedTreeNode.TypedIdentifier(parameter.name(), FunType.fromString(parameter.type()))
+                    new TypedTreeNode.TypedIdentifier(parameter.name(), Type.fromString(parameter.type()))
             );
             case SyntaxNode.ParameterList ignored -> new TypedTreeNode.NotImplemented();
-            case SyntaxNode.FunctionDeclaration ignored -> new TypedTreeNode.NotImplemented();
+            case SyntaxNode.FunctionDeclaration functionDeclaration -> {
+                List<TypedTreeNode.Parameter> parameters = functionDeclaration.parameters().parameters().stream()
+                        .map(TypeAnnotate::annotateTypes)
+                        .map(TypedTreeNode.Parameter.class::cast)
+                        .toList();
+
+                Type functionType = Type.fromString(functionDeclaration.returnType());
+
+                for (int i = functionDeclaration.parameters().parameters().size() - 1; i >= 0; i--) {
+                    TypedTreeNode.Parameter parameter = parameters.get(i);
+                    functionType = new Type.FunctionType(parameter.identifier().type(), functionType);
+                }
+
+                TypedTreeNode.TypedIdentifier typedIdentifier = new TypedTreeNode.TypedIdentifier(
+                        functionDeclaration.name(),
+                        functionType
+                );
+
+                TypedTreeNode.Expression body = annotateTypesAtExpression(functionDeclaration.body());
+                yield new TypedTreeNode.FunctionDeclaration(typedIdentifier, parameters, body);
+            }
             case Expression expression -> annotateTypesAtExpression(expression);
         };
     }
@@ -56,15 +93,15 @@ public class TypeAnnotate {
             case Expression.Factor factor -> annotateTypesAtFactor(factor);
             case Expression.FunctionCall functionCall -> {
                 TypedTreeNode.TypedIdentifier typedIdentifier =
-                        new TypedTreeNode.TypedIdentifier(functionCall.functionName(), new FunType.TypeVariable());
+                        new TypedTreeNode.TypedIdentifier(functionCall.functionName(), new Type.TypeVariable());
                 List<TypedTreeNode.Expression> arguments = functionCall.arguments().stream()
                         .map(TypeAnnotate::annotateTypesAtExpression)
                         .toList();
                 yield new TypedTreeNode.FunctionCall(typedIdentifier, arguments);
             }
-            case Expression.PrintlnExpression ignored -> new TypedTreeNode.NotImplemented();
-            case Expression.StringLiteral stringLiteral ->
-                    new TypedTreeNode.StringLiteral(stringLiteral.value(), new FunType.StringType());
+            case Expression.PrintlnExpression printlnExpression ->
+                    new TypedTreeNode.PrintExpression(annotateTypesAtExpression(printlnExpression.expression()));
+            case Expression.StringLiteral stringLiteral -> new TypedTreeNode.StringLiteral(stringLiteral.value());
         };
     }
 
@@ -79,14 +116,14 @@ public class TypeAnnotate {
                             case SUBTRACT -> TypedTreeNode.ArithmeticExpression.Operation.SUBTRACT;
                         };
                 yield new TypedTreeNode.BinaryArithmeticExpression(
-                        new FunType.TypeVariable(),
+                        new Type.TypeVariable(),
                         annotateTypesAtTerm(binaryArithmeticExpression.left()),
                         annotateTypesAtTerm(binaryArithmeticExpression.right()),
                         operation
                 );
             }
             case Expression.Operand operand ->
-                    new TypedTreeNode.Operand(new FunType.TypeVariable(), annotateTypesAtTerm(operand.left()));
+                    new TypedTreeNode.Operand(new Type.TypeVariable(), annotateTypesAtTerm(operand.left()));
         };
     }
 
@@ -98,21 +135,20 @@ public class TypeAnnotate {
                     case MULTIPLY -> TypedTreeNode.Term.Operation.MULTIPLY;
                 };
                 yield new TypedTreeNode.BinaryTerm(
-                        new FunType.TypeVariable(),
+                        new Type.TypeVariable(),
                         annotateTypesAtFactor(binaryTerm.left()),
                         annotateTypesAtFactor(binaryTerm.right()),
                         operation
                 );
             }
             case Expression.SimpleTerm simpleTerm ->
-                    new TypedTreeNode.SimpleTerm(new FunType.TypeVariable(), annotateTypesAtFactor(simpleTerm.left()));
+                    new TypedTreeNode.SimpleTerm(new Type.TypeVariable(), annotateTypesAtFactor(simpleTerm.left()));
         };
     }
 
     private static TypedTreeNode.Factor annotateTypesAtFactor(Expression.Factor factor) {
         return switch (factor) {
-            case Expression.IntegerLiteral integerLiteral ->
-                    new TypedTreeNode.IntegerLiteral(integerLiteral.literal(), new FunType.IntType());
+            case Expression.IntegerLiteral integerLiteral -> new TypedTreeNode.IntegerLiteral(integerLiteral.literal());
             case Expression.ParenthesizedExpression parenthesizedExpression -> {
                 TypedTreeNode.ArithmeticExpression typedExpression =
                         (TypedTreeNode.ArithmeticExpression) annotateTypesAtExpression(parenthesizedExpression.arithmeticExpression());
