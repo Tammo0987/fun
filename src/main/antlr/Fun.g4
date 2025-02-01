@@ -62,21 +62,22 @@ valueDeclaration
     : 'val' Id '=' expression
     ;
 
-functionCall
+functionApplication
     : Id '(' expression? (';' expression)* ')'
     ;
 
 expression
     : printExpression
     | simpleExpression
+    | functionApplication
     ;
 
 printExpression
-    : 'println(' (String | functionCall) ')'
+    : 'println(' expression ')'
     ;
 
 simpleExpression
-    : term (operand = (PLUS | MINUS) simpleExpression)*
+    : term (operand = (PLUS | MINUS) expression)*
     ;
 
 term
@@ -85,7 +86,7 @@ term
 
 factor
     : Number
-    | '(' simpleExpression ')'
+    | '(' expression ')'
     ;
 
 // Lexer
