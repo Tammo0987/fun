@@ -19,13 +19,13 @@ object Main {
 
     code match
       case Right(value) =>
-        writeCodeToFile(s"${compilationUnit.fullyQualifiedName}.class", value)
+        writeCodeToFile(s"playground/${compilationUnit.fullyQualifiedName}.class", value)
       case Left(value) =>
         throw new RuntimeException(value)
   }
 
   private def getInput: String = {
-    Files.readString(Paths.get("test.fun"))
+    Files.readString(Paths.get("playground/test.fun"))
   }
 
   private def writeCodeToFile(fileName: String, code: Array[Byte]): Unit = {
