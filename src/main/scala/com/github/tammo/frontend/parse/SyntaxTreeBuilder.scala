@@ -1,8 +1,8 @@
 package com.github.tammo.frontend.parse
 
-import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.{FunBaseVisitor, FunParser}
-import SyntaxTree.*
+import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.frontend.ast.SyntaxTree.*
 
 import scala.jdk.CollectionConverters.*
 
@@ -106,6 +106,14 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       visitPrintExpression(ctx.printExpression())
     } else if (ctx.simpleExpression() != null) {
       visitSimpleExpression(ctx.simpleExpression())
+    } else if (ctx.expression() != null) {
+      ParenthesizedExpression(
+        visitExpression(ctx.expression()).asInstanceOf[Expression]
+      )
+    } else if (ctx.String() != null) {
+      StringLiteral(
+        ctx.String().getText.substring(1, ctx.String().getText.length - 1)
+      )
     } else {
       super.visitExpression(ctx)
     }
@@ -152,7 +160,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   }
 
   override def visitTerm(ctx: FunParser.TermContext): SyntaxTree = {
-    if (ctx.term(0) != null) {
+    if (ctx.expression(0) != null) {
       val operation = ctx.operand.getText match
         case "*" => Term.Operator.MULTIPLY
         case "/" => Term.Operator.DIVIDE
@@ -163,7 +171,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
 
       BinaryTerm(
         visitFactor(ctx.factor()).asInstanceOf[Factor],
-        visitTerm(ctx.term().getFirst).asInstanceOf[Term],
+        visitExpression(ctx.expression().getFirst).asInstanceOf[Expression],
         operation
       )
     } else {
@@ -174,10 +182,6 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   override def visitFactor(ctx: FunParser.FactorContext): SyntaxTree = {
     if (ctx.Number() != null) {
       IntLiteral(ctx.Number().getText.toInt)
-    } else if (ctx.expression() != null) {
-      ParenthesizedExpression(
-        visitExpression(ctx.expression()).asInstanceOf[Expression]
-      )
     } else {
       super.visitFactor(ctx)
     }

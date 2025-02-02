@@ -3,11 +3,11 @@ namespace com/github/tammo
 class Main():
 
     effect main(args: String[]): Unit = {
-        println(test())
+        println("Hallo Anton")
     }
 
     fun add(): Int = {
-        20 + 20 + 20
+        2 * 2 * 5
     }
 
     fun test(): Int = {

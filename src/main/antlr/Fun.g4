@@ -70,6 +70,8 @@ expression
     : printExpression
     | simpleExpression
     | functionApplication
+    | '(' expression ')'
+    | String
     ;
 
 printExpression
@@ -81,12 +83,11 @@ simpleExpression
     ;
 
 term
-    : factor (operand = (MULTIPLY | DIVIDE) term)*
+    : factor (operand = (MULTIPLY | DIVIDE) expression)*
     ;
 
 factor
     : Number
-    | '(' expression ')'
     ;
 
 // Lexer

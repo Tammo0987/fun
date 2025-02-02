@@ -4,7 +4,15 @@ sealed trait TypedTree
 
 object TypedTree {
 
-  object NotImplemented extends TypedTree
+  sealed trait Expression extends TypedTree {
+    def `type`: Type
+  }
+
+  sealed trait ArithmeticExpression extends Expression
+
+  sealed trait Term extends Expression
+
+  sealed trait Factor extends Expression
 
   case class NamespaceDeclaration(identifier: String) extends TypedTree
 
@@ -14,7 +22,10 @@ object TypedTree {
   ) extends TypedTree {
 
     def fullyQualifiedName: String =
-      namespace.map(_.identifier).map(i => s"$i/").getOrElse("") + classDeclaration.name
+      namespace
+        .map(_.identifier)
+        .map(i => s"$i/")
+        .getOrElse("") + classDeclaration.name
 
   }
 
@@ -40,12 +51,8 @@ object TypedTree {
 
   case class Parameter(identifier: TypedIdentifier) extends TypedTree
 
-  sealed trait Expression extends TypedTree {
-    def `type`: Type
-  }
-
   case class PrintExpression(expression: Expression) extends Expression {
-    override def `type`: Type = Type.Unit // TODO change to function call?
+    override def `type`: Type = Type.Unit
   }
 
   case class StringLiteral(value: String) extends Expression {
@@ -63,14 +70,6 @@ object TypedTree {
     }
   }
 
-  sealed trait ArithmeticExpression extends Expression
-
-  object ArithmeticExpression {
-    enum Operator {
-      case ADD, SUBTRACT
-    }
-  }
-
   case class Operand(`type`: Type, left: Term) extends ArithmeticExpression
 
   case class BinaryArithmeticExpression(
@@ -79,14 +78,6 @@ object TypedTree {
       right: Expression,
       operator: ArithmeticExpression.Operator
   ) extends ArithmeticExpression
-
-  sealed trait Term extends Expression
-
-  object Term {
-    enum Operator {
-      case MULTIPLY, DIVIDE
-    }
-  }
 
   case class UnaryTerm(`type`: Type, left: Factor) extends Term
 
@@ -97,8 +88,6 @@ object TypedTree {
       operator: Term.Operator
   ) extends Term
 
-  sealed trait Factor extends Expression
-
   case class IntLiteral(literal: Int) extends Factor {
     override def `type`: Type = Type.Int
   }
@@ -106,6 +95,20 @@ object TypedTree {
   case class ParenthesizedExpression(expression: Expression)
       extends Expression {
     override def `type`: Type = expression.`type`
+  }
+
+  object NotImplemented extends TypedTree
+
+  object ArithmeticExpression {
+    enum Operator {
+      case ADD, SUBTRACT
+    }
+  }
+
+  object Term {
+    enum Operator {
+      case MULTIPLY, DIVIDE
+    }
   }
 
 }
