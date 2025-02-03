@@ -37,7 +37,7 @@ object CompilerError {
   ) extends TypeCheckError
       with PositionedError {
     override def message: String =
-      s"Cannot unify type $leftType with type $rightType. They are incompatible."
+      s"Type $leftType is incompatible with type $rightType."
 
     override def level: Level = Level.Error
   }
