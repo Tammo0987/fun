@@ -1,7 +1,6 @@
 package com.github.tammo
 
 import com.github.tammo.backend.JVMCodeGenerator
-import com.github.tammo.diagnostics.CompilerError.MethodNotCreated
 import com.github.tammo.diagnostics.{CompilerErrorRenderer, SourceFile}
 import com.github.tammo.frontend.`type`.TypeChecker
 import com.github.tammo.frontend.`type`.TypedTree.CompilationUnit
@@ -19,16 +18,6 @@ object Main {
       typedTree <- TypeChecker.typeCheck(compilationUnit)
       code <- JVMCodeGenerator.generate(typedTree.asInstanceOf[CompilationUnit])
     } yield code
-
-    println(
-      CompilerErrorRenderer.render(
-        MethodNotCreated("Example test message."),
-        SourceFile(
-          Paths.get("playground/test.fun").toAbsolutePath.toString,
-          input
-        )
-      )
-    )
 
     result match
       case Right(value) =>
