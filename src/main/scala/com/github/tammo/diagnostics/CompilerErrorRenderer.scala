@@ -1,5 +1,7 @@
 package com.github.tammo.diagnostics
 
+import com.github.tammo.diagnostics.CompilerError.PositionedError
+
 object CompilerErrorRenderer {
 
   // ANSI escape codes
@@ -19,10 +21,16 @@ object CompilerErrorRenderer {
   def render(
       error: CompilerError,
       source: SourceFile
-  ): String =
-    s"[${renderLevel(error.level)}] ${error.message}$RESET" + "\n" +
-      s"Source file location: ${source.id}" + "\n" +
-      renderSourceCode(source, PositionSpan(source.id, 47, 120))
+  ): String = error match {
+    case pe: PositionedError =>
+      s"""[${renderLevel(error.level)}] ${error.message}$RESET
+         |Source file location: ${source.id}
+         |${renderSourceCode(source, pe.positionSpan)}""".stripMargin
+    case _ =>
+      s"""[${renderLevel(error.level)}] ${error.message}$RESET
+         |Source file location: ${source.id}
+         |""".stripMargin
+  }
 
   private def renderSourceCode(
       source: SourceFile,
@@ -31,9 +39,6 @@ object CompilerErrorRenderer {
     val lines = source.content.split("\n")
     val (startLine, startColumn) = source.toLineColumn(position.startOffset)
     val (endLine, endColumn) = source.toLineColumn(position.endOffset)
-
-    println(s"startLine: $startLine, startColumn: $startColumn")
-    println(s"endLine: $endLine, endColumn: $endColumn")
 
     val start =
       Math.max(startLine - 3, 0) // Lines are 1-based but array is 0-based

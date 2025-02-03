@@ -1,6 +1,7 @@
 package com.github.tammo.frontend.`type`
 
-import com.github.tammo.diagnostics.CompilerError.{CyclicTypeReferenceError, TypeCheckError}
+import com.github.tammo.diagnostics.CompilerError.{CyclicTypeReferenceError, IncompatibleTypesError, TypeCheckError}
+import com.github.tammo.diagnostics.PositionSpan
 
 object Unifier {
 
@@ -32,7 +33,7 @@ object Unifier {
         Right(Map.empty[Type.Variable, Type])
       ) {
         case (Right(substitutions), constraint) =>
-          val result = unify(constraint.left, constraint.right, substitutions)
+          val result = unify(constraint.left, constraint.right, constraint.span, substitutions)
           result match {
             case right: Right[TypeCheckError, Substitutions] =>
               right.map(substitutions ++ _)
@@ -46,6 +47,7 @@ object Unifier {
   private def unify(
       left: Type,
       right: Type,
+      positionSpan: PositionSpan,
       substitutions: Substitutions
   ): Either[TypeCheckError, Substitutions] = {
     val substitutedLeft = applySubstitution(substitutions, left)
@@ -56,17 +58,17 @@ object Unifier {
     } else {
       (substitutedLeft, substitutedRight) match {
         case (leftTypeVariable: Type.Variable, _) =>
-          unifyVariable(leftTypeVariable, substitutedRight, substitutions)
+          unifyVariable(leftTypeVariable, substitutedRight, positionSpan, substitutions)
         case (_, rightTypeVariable: Type.Variable) =>
-          unifyVariable(rightTypeVariable, substitutedLeft, substitutions)
+          unifyVariable(rightTypeVariable, substitutedLeft, positionSpan, substitutions)
         case (
               Type.FunctionType(leftParameter, leftReturnType),
               Type.FunctionType(rightParameter, rightReturnType)
             ) =>
           val unifiedParameter =
-            unify(leftParameter, rightParameter, substitutions)
+            unify(leftParameter, rightParameter, positionSpan, substitutions)
           val unifiedReturnType =
-            unify(leftReturnType, rightReturnType, substitutions)
+            unify(leftReturnType, rightReturnType, positionSpan, substitutions)
           (unifiedParameter, unifiedReturnType) match {
             case (Right(parameter), Right(returnType)) =>
               Right(parameter ++ returnType)
@@ -76,7 +78,7 @@ object Unifier {
               typeError
           }
         case _ =>
-          throw new IllegalStateException(s"Cannot unify $left with $right")
+          Left(IncompatibleTypesError(substitutedLeft, substitutedRight, positionSpan))
       }
     }
   }
@@ -84,20 +86,21 @@ object Unifier {
   private def unifyVariable(
       variable: Type.Variable,
       other: Type,
+      positionSpan: PositionSpan,
       substitutions: Substitutions
   ): Either[TypeCheckError, Substitutions] = {
     val currentSubstitutions = substitutions.get(variable)
 
     currentSubstitutions match
       case Some(currentSubstitution) =>
-        unify(currentSubstitution, other, substitutions)
+        unify(currentSubstitution, other, positionSpan, substitutions)
 
       case None =>
         other match
           case otherVariable: Type.Variable =>
             val maybeSubstitutions = substitutions
               .get(otherVariable)
-              .map(unifyVariable(variable, _, substitutions))
+              .map(unifyVariable(variable, _, positionSpan, substitutions))
 
             maybeSubstitutions match {
               case Some(substitutions) => substitutions
