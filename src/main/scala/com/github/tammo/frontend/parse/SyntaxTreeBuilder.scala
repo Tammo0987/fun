@@ -1,8 +1,10 @@
 package com.github.tammo.frontend.parse
 
 import com.github.tammo.{FunBaseVisitor, FunParser}
+import com.github.tammo.diagnostics.PositionSpan
 import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.frontend.ast.SyntaxTree.*
+import org.antlr.v4.runtime.{CommonToken, ParserRuleContext}
 
 import scala.jdk.CollectionConverters.*
 
@@ -13,7 +15,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   ): SyntaxTree = {
     val namespaceDeclaration = Option(ctx.namespaceDeclaration())
       .map(_.qualifierIdentifier().getText)
-      .map(NamespaceDeclaration.apply)
+      .map(NamespaceDeclaration(_, getPositionSpan(ctx.namespaceDeclaration())))
 
     val useDeclarations = ctx
       .useDeclaration()
@@ -34,23 +36,39 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       useDeclarations,
       exposeDeclarations,
       visitClassDeclaration(ctx.classDeclaration())
-        .asInstanceOf[ClassDeclaration]
+        .asInstanceOf[ClassDeclaration],
+      getPositionSpan(ctx)
     )
   }
 
   override def visitNamespaceDeclaration(
       ctx: FunParser.NamespaceDeclarationContext
-  ): SyntaxTree = NamespaceDeclaration(ctx.qualifierIdentifier().getText)
+  ): SyntaxTree = NamespaceDeclaration(
+    ctx.qualifierIdentifier().getText,
+    getPositionSpan(ctx)
+  )
+
+  private def getPositionSpan(
+      parserRuleContext: ParserRuleContext
+  ): PositionSpan = {
+    val startToken = parserRuleContext.getStart.asInstanceOf[CommonToken]
+    val startOffset = startToken.getStartIndex
+    val endOffset = startToken.getStopIndex
+    PositionSpan("", startOffset, endOffset)
+  }
 
   override def visitUseDeclaration(
       ctx: FunParser.UseDeclarationContext
   ): SyntaxTree =
-    UseDeclaration(ctx.qualifierIdentifier().Id().asScala.map(_.getText).toSeq)
+    UseDeclaration(
+      ctx.qualifierIdentifier().Id().asScala.map(_.getText).toSeq,
+      getPositionSpan(ctx)
+    )
 
   override def visitExposeDeclaration(
       ctx: FunParser.ExposeDeclarationContext
   ): SyntaxTree =
-    ExposeIdentifiers(Seq.empty)
+    ExposeIdentifiers(Seq.empty, getPositionSpan(ctx))
 
   override def visitClassDeclaration(
       ctx: FunParser.ClassDeclarationContext
@@ -74,7 +92,8 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       name,
       parameters,
       effects,
-      functions
+      functions,
+      getPositionSpan(ctx)
     )
   }
 
@@ -86,7 +105,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
     val returnType = ctx.simpleType().getText
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
-    EffectDeclaration(name, parameter, returnType, body)
+    EffectDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))
   }
 
   override def visitFunctionDeclaration(
@@ -97,7 +116,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
     val returnType = ctx.simpleType().getText
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
-    FunctionDeclaration(name, parameter, returnType, body)
+    FunctionDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))
   }
 
   // TODO more work
@@ -108,11 +127,13 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       visitSimpleExpression(ctx.simpleExpression())
     } else if (ctx.expression() != null) {
       ParenthesizedExpression(
-        visitExpression(ctx.expression()).asInstanceOf[Expression]
+        visitExpression(ctx.expression()).asInstanceOf[Expression],
+        getPositionSpan(ctx)
       )
     } else if (ctx.String() != null) {
       StringLiteral(
-        ctx.String().getText.substring(1, ctx.String().getText.length - 1)
+        ctx.String().getText.substring(1, ctx.String().getText.length - 1),
+        getPositionSpan(ctx)
       )
     } else {
       super.visitExpression(ctx)
@@ -122,7 +143,10 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   override def visitPrintExpression(
       ctx: FunParser.PrintExpressionContext
   ): SyntaxTree = {
-    PrintExpression(visitExpression(ctx.expression()).asInstanceOf[Expression])
+    PrintExpression(
+      visitExpression(ctx.expression()).asInstanceOf[Expression],
+      getPositionSpan(ctx)
+    )
   }
 
   override def visitFunctionApplication(
@@ -134,7 +158,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       .map(visitExpression)
       .map(_.asInstanceOf[Expression])
       .toSeq
-    FunctionApplication(ctx.Id().getText, arguments)
+    FunctionApplication(ctx.Id().getText, arguments, getPositionSpan(ctx))
   }
 
   override def visitSimpleExpression(
@@ -152,10 +176,11 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       BinaryArithmeticExpression(
         visitTerm(ctx.term()).asInstanceOf[Term],
         visitExpression(ctx.expression().getFirst).asInstanceOf[Expression],
-        operation
+        operation,
+        getPositionSpan(ctx)
       )
     } else {
-      Operand(visitTerm(ctx.term()).asInstanceOf[Term])
+      Operand(visitTerm(ctx.term()).asInstanceOf[Term], getPositionSpan(ctx))
     }
   }
 
@@ -172,16 +197,20 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       BinaryTerm(
         visitFactor(ctx.factor()).asInstanceOf[Factor],
         visitExpression(ctx.expression().getFirst).asInstanceOf[Expression],
-        operation
+        operation,
+        getPositionSpan(ctx)
       )
     } else {
-      UnaryTerm(visitFactor(ctx.factor()).asInstanceOf[Factor])
+      UnaryTerm(
+        visitFactor(ctx.factor()).asInstanceOf[Factor],
+        getPositionSpan(ctx)
+      )
     }
   }
 
   override def visitFactor(ctx: FunParser.FactorContext): SyntaxTree = {
     if (ctx.Number() != null) {
-      IntLiteral(ctx.Number().getText.toInt)
+      IntLiteral(ctx.Number().getText.toInt, getPositionSpan(ctx))
     } else {
       super.visitFactor(ctx)
     }
@@ -192,7 +221,16 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   ): Seq[Parameter] = {
     Seq
       .range(0, ctx.Id().size())
-      .map(i => Parameter(ctx.Id(i).getText, ctx.simpleType(i).getText))
+      .map(i => {
+        val startOffset = ctx.Id(i).getSymbol.getStartIndex
+        val endOffset = ctx.simpleType(i).getStart.getStopIndex
+        val positionSpan = PositionSpan("", startOffset, endOffset)
+        Parameter(
+          ctx.Id(i).getText,
+          ctx.simpleType(i).getText,
+          positionSpan
+        )
+      })
   }
 
 }

@@ -1,5 +1,7 @@
 package com.github.tammo.frontend.`type`
 
+import com.github.tammo.diagnostics.CompilerError.{CyclicTypeReferenceError, TypeCheckError}
+
 object Unifier {
 
   private type Substitutions = Map[Type.Variable, Type]
@@ -20,17 +22,23 @@ object Unifier {
       )
     case _ => `type`
 
-  def unifyAll(constraints: Seq[Constraint]): Substitutions = {
+  def unifyAll(
+      constraints: Seq[Constraint]
+  ): Either[TypeCheckError, Substitutions] = {
     if (constraints.isEmpty) {
-      Map.empty
+      Right(Map.empty)
     } else {
-      constraints.foldLeft(Map.empty[Type.Variable, Type]) {
-        (substitutions, constraint) =>
-          substitutions ++ unify(
-            constraint.left,
-            constraint.right,
-            substitutions
-          )
+      constraints.foldLeft[Either[TypeCheckError, Substitutions]](
+        Right(Map.empty[Type.Variable, Type])
+      ) {
+        case (Right(substitutions), constraint) =>
+          val result = unify(constraint.left, constraint.right, substitutions)
+          result match {
+            case right: Right[TypeCheckError, Substitutions] =>
+              right.map(substitutions ++ _)
+            case typeError: Left[TypeCheckError, Substitutions] => typeError
+          }
+        case (typeError: Left[TypeCheckError, Substitutions], _) => typeError
       }
     }
   }
@@ -39,12 +47,12 @@ object Unifier {
       left: Type,
       right: Type,
       substitutions: Substitutions
-  ): Substitutions = {
+  ): Either[TypeCheckError, Substitutions] = {
     val substitutedLeft = applySubstitution(substitutions, left)
     val substitutedRight = applySubstitution(substitutions, right)
 
     if (substitutedLeft == substitutedRight) {
-      substitutions
+      Right(substitutions)
     } else {
       (substitutedLeft, substitutedRight) match {
         case (leftTypeVariable: Type.Variable, _) =>
@@ -55,11 +63,18 @@ object Unifier {
               Type.FunctionType(leftParameter, leftReturnType),
               Type.FunctionType(rightParameter, rightReturnType)
             ) =>
-          unify(leftParameter, rightParameter, substitutions) ++ unify(
-            leftReturnType,
-            rightReturnType,
-            substitutions
-          )
+          val unifiedParameter =
+            unify(leftParameter, rightParameter, substitutions)
+          val unifiedReturnType =
+            unify(leftReturnType, rightReturnType, substitutions)
+          (unifiedParameter, unifiedReturnType) match {
+            case (Right(parameter), Right(returnType)) =>
+              Right(parameter ++ returnType)
+            case (typeError: Left[TypeCheckError, Substitutions], _) =>
+              typeError
+            case (_, typeError: Left[TypeCheckError, Substitutions]) =>
+              typeError
+          }
         case _ =>
           throw new IllegalStateException(s"Cannot unify $left with $right")
       }
@@ -70,7 +85,7 @@ object Unifier {
       variable: Type.Variable,
       other: Type,
       substitutions: Substitutions
-  ): Substitutions = {
+  ): Either[TypeCheckError, Substitutions] = {
     val currentSubstitutions = substitutions.get(variable)
 
     currentSubstitutions match
@@ -95,14 +110,12 @@ object Unifier {
       variable: Type.Variable,
       other: Type,
       substitutions: Substitutions
-  ): Substitutions = {
+  ): Either[TypeCheckError, Substitutions] = {
     if (occursCheck(variable, other)) {
-      throw new IllegalStateException(
-        s"Type variable $variable occurs in $other"
-      )
+      Left(CyclicTypeReferenceError(variable, other))
+    } else {
+      Right(substitutions + (variable -> other))
     }
-
-    substitutions + (variable -> other)
   }
 
   private def occursCheck(variable: Type.Variable, other: Type): Boolean = {

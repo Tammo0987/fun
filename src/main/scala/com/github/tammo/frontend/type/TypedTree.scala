@@ -1,6 +1,12 @@
 package com.github.tammo.frontend.`type`
 
-sealed trait TypedTree
+import com.github.tammo.diagnostics.PositionSpan
+
+sealed trait TypedTree {
+
+  def span: PositionSpan
+
+}
 
 object TypedTree {
 
@@ -14,11 +20,13 @@ object TypedTree {
 
   sealed trait Factor extends Expression
 
-  case class NamespaceDeclaration(identifier: String) extends TypedTree
+  case class NamespaceDeclaration(identifier: String, span: PositionSpan)
+      extends TypedTree
 
   case class CompilationUnit(
       namespace: Option[NamespaceDeclaration],
-      classDeclaration: ClassDeclaration
+      classDeclaration: ClassDeclaration,
+      span: PositionSpan
   ) extends TypedTree {
 
     def fullyQualifiedName: String =
@@ -32,36 +40,44 @@ object TypedTree {
   case class ClassDeclaration(
       name: String,
       effects: Seq[EffectDeclaration],
-      functions: Seq[FunctionDeclaration]
+      functions: Seq[FunctionDeclaration],
+      span: PositionSpan
   ) extends TypedTree
 
-  case class TypedIdentifier(name: String, `type`: Type) extends TypedTree
+  case class TypedIdentifier(name: String, `type`: Type, span: PositionSpan)
+      extends TypedTree
 
   case class EffectDeclaration(
       identifier: TypedIdentifier,
       parameters: Seq[Parameter],
-      body: Expression
+      body: Expression,
+      span: PositionSpan
   ) extends TypedTree
 
   case class FunctionDeclaration(
       identifier: TypedIdentifier,
       parameters: Seq[Parameter],
-      body: Expression
+      body: Expression,
+      span: PositionSpan
   ) extends TypedTree
 
-  case class Parameter(identifier: TypedIdentifier) extends TypedTree
+  case class Parameter(identifier: TypedIdentifier, span: PositionSpan)
+      extends TypedTree
 
-  case class PrintExpression(expression: Expression) extends Expression {
+  case class PrintExpression(expression: Expression, span: PositionSpan)
+      extends Expression {
     override def `type`: Type = Type.Unit
   }
 
-  case class StringLiteral(value: String) extends Expression {
+  case class StringLiteral(value: String, span: PositionSpan)
+      extends Expression {
     override def `type`: Type = Type.String
   }
 
   case class FunctionApplication(
       identifier: TypedIdentifier,
-      arguments: Seq[Expression]
+      arguments: Seq[Expression],
+      span: PositionSpan
   ) extends Expression {
     override def `type`: Type = {
       arguments.foldRight(identifier.`type`) { (arg, acc) =>
@@ -70,34 +86,40 @@ object TypedTree {
     }
   }
 
-  case class Operand(`type`: Type, left: Term) extends ArithmeticExpression
+  case class Operand(`type`: Type, left: Term, span: PositionSpan)
+      extends ArithmeticExpression
 
   case class BinaryArithmeticExpression(
       `type`: Type,
       left: Term,
       right: Expression,
-      operator: ArithmeticExpression.Operator
+      operator: ArithmeticExpression.Operator,
+      span: PositionSpan
   ) extends ArithmeticExpression
 
-  case class UnaryTerm(`type`: Type, left: Factor) extends Term
+  case class UnaryTerm(`type`: Type, left: Factor, span: PositionSpan)
+      extends Term
 
   case class BinaryTerm(
       `type`: Type,
       left: Factor,
       right: Expression,
-      operator: Term.Operator
+      operator: Term.Operator,
+      span: PositionSpan
   ) extends Term
 
-  case class IntLiteral(literal: Int) extends Factor {
+  case class IntLiteral(literal: Int, span: PositionSpan) extends Factor {
     override def `type`: Type = Type.Int
   }
 
-  case class ParenthesizedExpression(expression: Expression)
+  case class ParenthesizedExpression(expression: Expression, span: PositionSpan)
       extends Expression {
     override def `type`: Type = expression.`type`
   }
 
-  object NotImplemented extends TypedTree
+  object NotImplemented extends TypedTree {
+    override def span: PositionSpan = PositionSpan("", 0, 0)
+  }
 
   object ArithmeticExpression {
     enum Operator {

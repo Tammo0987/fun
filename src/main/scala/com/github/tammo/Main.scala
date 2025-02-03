@@ -1,6 +1,8 @@
 package com.github.tammo
 
 import com.github.tammo.backend.JVMCodeGenerator
+import com.github.tammo.diagnostics.CompilerError.MethodNotCreated
+import com.github.tammo.diagnostics.{CompilerErrorRenderer, SourceFile}
 import com.github.tammo.frontend.`type`.TypeChecker
 import com.github.tammo.frontend.`type`.TypedTree.CompilationUnit
 import com.github.tammo.frontend.parse.AntlrParser
@@ -13,15 +15,37 @@ object Main {
     val input = getInput
     val parser = AntlrParser
     val compilationUnit = parser.parse(input)
-    val typedTree = TypeChecker.typeCheck(compilationUnit)
-    val code =
-      JVMCodeGenerator.generate(typedTree.asInstanceOf[CompilationUnit])
+    val result = for {
+      typedTree <- TypeChecker.typeCheck(compilationUnit)
+      code <- JVMCodeGenerator.generate(typedTree.asInstanceOf[CompilationUnit])
+    } yield code
 
-    code match
+    println(
+      CompilerErrorRenderer.render(
+        MethodNotCreated("Example test message."),
+        SourceFile(
+          Paths.get("playground/test.fun").toAbsolutePath.toString,
+          input
+        )
+      )
+    )
+
+    result match
       case Right(value) =>
-        writeCodeToFile(s"playground/${compilationUnit.fullyQualifiedName}.class", value)
-      case Left(value) =>
-        throw new RuntimeException(value)
+        writeCodeToFile(
+          s"playground/${compilationUnit.fullyQualifiedName}.class",
+          value
+        )
+      case Left(compilerError) =>
+        println(
+          CompilerErrorRenderer.render(
+            compilerError,
+            SourceFile(
+              Paths.get("playground/test.fun").toAbsolutePath.toString,
+              input
+            )
+          )
+        )
   }
 
   private def getInput: String = {

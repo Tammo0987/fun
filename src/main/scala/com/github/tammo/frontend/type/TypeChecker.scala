@@ -1,16 +1,18 @@
 package com.github.tammo.frontend.`type`
 
+import com.github.tammo.diagnostics.CompilerError.TypeCheckError
 import com.github.tammo.frontend.ast.SyntaxTree
 
 object TypeChecker {
 
-  def typeCheck(tree: SyntaxTree.CompilationUnit): TypedTree = {
+  def typeCheck(tree: SyntaxTree.CompilationUnit): Either[TypeCheckError, TypedTree] = {
     val annotatedTypeTree = TypeAnnotate.annotateTypes(tree)
     val constraints = Constraints.collect(annotatedTypeTree)
-    val substitutions = Unifier.unifyAll(constraints)
-    SubstitutionApplier.applySubstitutions(
-      annotatedTypeTree,
-      `type` => Unifier.applySubstitution(substitutions, `type`)
-    )
+    Unifier.unifyAll(constraints).map { substitutions =>
+      SubstitutionApplier.applySubstitutions(
+        annotatedTypeTree,
+        `type` => Unifier.applySubstitution(substitutions, `type`)
+      )
+    }
   }
 }

@@ -1,6 +1,8 @@
 package com.github.tammo.backend
 
 import com.github.tammo.backend.CodeGenerationAction.{BeginMethod, ClassAction, EndMethod, MethodAction}
+import com.github.tammo.diagnostics.CompilerError
+import com.github.tammo.diagnostics.CompilerError.MethodNotCreated
 import org.objectweb.asm.{ClassWriter, MethodVisitor}
 
 object CodeGenerationInterpreter {
@@ -9,12 +11,15 @@ object CodeGenerationInterpreter {
   def interpret(
       actions: Seq[CodeGenerationAction],
       classWriter: ClassWriter
-  ): Either[String, Unit] = {
+  ): Either[CompilerError, Unit] = {
     val result =
-      actions.foldLeft[(Either[String, Unit], Option[MethodVisitor])](
+      actions.foldLeft[(Either[CompilerError, Unit], Option[MethodVisitor])](
         (Right(()), None)
-      ) { (acc, action) =>
-        interpretAction(action, classWriter, acc._2)
+      ) {
+        case ((_: Right[CompilerError, Unit], methodVisitor), action) =>
+          interpretAction(action, classWriter, methodVisitor)
+        case ((compilerError: Left[CompilerError, Unit], methodVisitor), _) =>
+          (compilerError, methodVisitor)
       }
 
     result._1
@@ -24,7 +29,7 @@ object CodeGenerationInterpreter {
       action: CodeGenerationAction,
       classWriter: ClassWriter,
       methodVisitor: Option[MethodVisitor]
-  ): (Either[String, Unit], Option[MethodVisitor]) = action match
+  ): (Either[CompilerError, Unit], Option[MethodVisitor]) = action match
     case ClassAction(f) => (Right(f(classWriter)), methodVisitor)
     case BeginMethod(access, name, descriptor) =>
       val newMethodVisitor = classWriter.visitMethod(
@@ -38,7 +43,15 @@ object CodeGenerationInterpreter {
       (Right(()), Some(newMethodVisitor))
     case MethodAction(f) =>
       methodVisitor match
-        case None    => (Left("No method visitor"), methodVisitor)
+        case None =>
+          (
+            Left(
+              MethodNotCreated(
+                "Tried to generate code for a method, but method never started."
+              )
+            ),
+            methodVisitor
+          )
         case Some(_) => (Right(f(methodVisitor.get)), methodVisitor)
     case EndMethod =>
       methodVisitor.foreach { mv =>

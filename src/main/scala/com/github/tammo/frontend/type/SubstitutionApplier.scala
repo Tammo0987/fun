@@ -30,7 +30,11 @@ object SubstitutionApplier {
       apply: Type => Type
   ): CompilationUnit = CompilationUnit(
     compilationUnit.namespace,
-    applySubstitutionToClassDeclaration(compilationUnit.classDeclaration, apply)
+    applySubstitutionToClassDeclaration(
+      compilationUnit.classDeclaration,
+      apply
+    ),
+    compilationUnit.span
   )
 
   private def applySubstitutionToClassDeclaration(
@@ -43,7 +47,8 @@ object SubstitutionApplier {
     ),
     classDeclaration.functions.map(
       applySubstitutionToFunctionDeclaration(_, apply)
-    )
+    ),
+    classDeclaration.span
   )
 
   private def applySubstitutionToEffectDeclaration(
@@ -52,7 +57,8 @@ object SubstitutionApplier {
   ): EffectDeclaration = EffectDeclaration(
     applySubstitutionToTypedIdentifier(effectDeclaration.identifier, apply),
     effectDeclaration.parameters.map(applySubstitutionToParameter(_, apply)),
-    applySubstitutionToExpression(effectDeclaration.body, apply)
+    applySubstitutionToExpression(effectDeclaration.body, apply),
+    effectDeclaration.span
   )
 
   private def applySubstitutionToFunctionDeclaration(
@@ -61,7 +67,8 @@ object SubstitutionApplier {
   ): FunctionDeclaration = FunctionDeclaration(
     applySubstitutionToTypedIdentifier(functionDeclaration.identifier, apply),
     functionDeclaration.parameters.map(applySubstitutionToParameter(_, apply)),
-    applySubstitutionToExpression(functionDeclaration.body, apply)
+    applySubstitutionToExpression(functionDeclaration.body, apply),
+    functionDeclaration.span
   )
 
   private def applySubstitutionToTypedIdentifier(
@@ -69,24 +76,29 @@ object SubstitutionApplier {
       apply: Type => Type
   ): TypedIdentifier = TypedIdentifier(
     typedIdentifier.name,
-    apply(typedIdentifier.`type`)
+    apply(typedIdentifier.`type`),
+    typedIdentifier.span
   )
 
   private def applySubstitutionToParameter(
       parameter: Parameter,
       apply: Type => Type
   ): Parameter = Parameter(
-    applySubstitutionToTypedIdentifier(parameter.identifier, apply)
+    applySubstitutionToTypedIdentifier(parameter.identifier, apply),
+    parameter.span
   )
 
   private def applySubstitutionToExpression(
       expression: Expression,
       apply: Type => Type
   ): Expression = expression match
-    case PrintExpression(expression) =>
-      PrintExpression(applySubstitutionToExpression(expression, apply))
-    case ParenthesizedExpression(expression) =>
-      ParenthesizedExpression(applySubstitutionToExpression(expression, apply))
+    case PrintExpression(expression, span) =>
+      PrintExpression(applySubstitutionToExpression(expression, apply), span)
+    case ParenthesizedExpression(expression, span) =>
+      ParenthesizedExpression(
+        applySubstitutionToExpression(expression, apply),
+        span
+      )
     case literal: StringLiteral => literal
     case application: FunctionApplication =>
       applySubstitutionToFunctionApplication(application, apply)
@@ -100,7 +112,8 @@ object SubstitutionApplier {
       apply: Type => Type
   ): FunctionApplication = FunctionApplication(
     applySubstitutionToTypedIdentifier(functionApplication.identifier, apply),
-    functionApplication.arguments.map(applySubstitutionToExpression(_, apply))
+    functionApplication.arguments.map(applySubstitutionToExpression(_, apply)),
+    functionApplication.span
   )
 
   private def applySubstitutionToArithmeticExpression(
@@ -110,14 +123,16 @@ object SubstitutionApplier {
     case operand: Operand =>
       Operand(
         apply(operand.`type`),
-        applySubstitutionToTerm(operand.left, apply)
+        applySubstitutionToTerm(operand.left, apply),
+        operand.span
       )
     case expression: BinaryArithmeticExpression =>
       BinaryArithmeticExpression(
         apply(expression.`type`),
         applySubstitutionToTerm(expression.left, apply),
         applySubstitutionToExpression(expression.right, apply),
-        expression.operator
+        expression.operator,
+        expression.span
       )
 
   private def applySubstitutionToTerm(
@@ -125,13 +140,18 @@ object SubstitutionApplier {
       apply: Type => Type
   ): Term = term match
     case term: UnaryTerm =>
-      UnaryTerm(apply(term.`type`), applySubstitutionToFactor(term.left))
+      UnaryTerm(
+        apply(term.`type`),
+        applySubstitutionToFactor(term.left),
+        term.span
+      )
     case term: BinaryTerm =>
       BinaryTerm(
         apply(term.`type`),
         applySubstitutionToFactor(term.left),
         applySubstitutionToExpression(term.right, apply),
-        term.operator
+        term.operator,
+        term.span
       )
 
   private def applySubstitutionToFactor(factor: Factor): Factor = factor match

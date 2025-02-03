@@ -1,9 +1,12 @@
 package com.github.tammo.backend
 
 import com.github.tammo.backend.CodeGenerationAction.*
-import com.github.tammo.frontend.`type`.{Type, TypedTree}
+import com.github.tammo.diagnostics.CompilerError
+import com.github.tammo.frontend.`type`.Type
+import com.github.tammo.frontend.`type`.TypedTree
 import com.github.tammo.frontend.`type`.TypedTree.*
-import org.objectweb.asm.{ClassWriter, MethodVisitor}
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes.*
 
 import scala.annotation.tailrec
@@ -12,17 +15,16 @@ object JVMCodeGenerator extends CodeGenerator {
 
   override def generate(
       compilationUnit: CompilationUnit
-  ): Either[String, Array[Byte]] = {
+  ): Either[CompilerError, Array[Byte]] = {
     val (assembledState, _) =
       generateCodeActions(compilationUnit).run(CodeGenState(Seq.empty, 1))
     val classWriter = new ClassWriter(
       ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS
     )
 
-    val result =
-      CodeGenerationInterpreter.interpret(assembledState.actions, classWriter)
-
-    result.map(_ => classWriter.toByteArray)
+    CodeGenerationInterpreter
+      .interpret(assembledState.actions, classWriter)
+      .map(_ => classWriter.toByteArray)
   }
 
   private def generateCodeActions(
@@ -126,12 +128,13 @@ object JVMCodeGenerator extends CodeGenerator {
     case expression: PrintExpression => generatePrintExpression(expression)
     case application: FunctionApplication =>
       generateFunctionApplication(application)
-    case StringLiteral(value) => for {
-      _ <- State.addAction(MethodAction(methodVisitor => {
-        methodVisitor.visitLdcInsn(value)
-      }))
-    } yield ()
-    case ParenthesizedExpression(expression) =>
+    case StringLiteral(value, _) =>
+      for {
+        _ <- State.addAction(MethodAction(methodVisitor => {
+          methodVisitor.visitLdcInsn(value)
+        }))
+      } yield ()
+    case ParenthesizedExpression(expression, _) =>
       for {
         _ <- generateCodeActions(expression)
         index <- State.allocateLocalIndex()

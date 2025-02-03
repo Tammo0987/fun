@@ -46,7 +46,7 @@ object Constraints {
       collect(pe.expression) ++ Seq(
         Constraint(pe.`type`, Type.Unit)
       )
-    case FunctionApplication(_, arguments) =>
+    case FunctionApplication(_, arguments, _) =>
       // TODO maybe add naming constraints into some type env? To recognize not found?
       arguments.flatMap(collect)
     case pe: ParenthesizedExpression =>

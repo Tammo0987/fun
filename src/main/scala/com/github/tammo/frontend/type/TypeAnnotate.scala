@@ -1,8 +1,9 @@
 package com.github.tammo.frontend.`type`
 
-import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.diagnostics.PositionSpan
 import com.github.tammo.frontend.`type`.TypedTree.TypedIdentifier
-import SyntaxTree.{ArithmeticExpression, Term}
+import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.frontend.ast.SyntaxTree.{ArithmeticExpression, Term}
 
 object TypeAnnotate {
 
@@ -10,12 +11,14 @@ object TypeAnnotate {
       syntaxTree: SyntaxTree.CompilationUnit
   ): TypedTree.CompilationUnit = {
     val namespaceDeclaration = syntaxTree.namespace
-      .map(_.identifier)
-      .map(TypedTree.NamespaceDeclaration.apply)
+      .map(namespace =>
+        TypedTree.NamespaceDeclaration(namespace.identifier, namespace.span)
+      )
 
     TypedTree.CompilationUnit(
       namespaceDeclaration,
-      annotateTypeAtClassDeclaration(syntaxTree.classDeclaration)
+      annotateTypeAtClassDeclaration(syntaxTree.classDeclaration),
+      syntaxTree.span
     )
   }
 
@@ -25,7 +28,8 @@ object TypeAnnotate {
     TypedTree.ClassDeclaration(
       classDeclaration.name,
       classDeclaration.effects.map(annotateTypesAtEffectDeclaration),
-      classDeclaration.functions.map(annotateTypesAtFunctionDeclaration)
+      classDeclaration.functions.map(annotateTypesAtFunctionDeclaration),
+      classDeclaration.span
     )
 
   private def annotateTypesAtEffectDeclaration(
@@ -36,13 +40,19 @@ object TypeAnnotate {
       createFunctionType(
         effectDeclaration.returnType,
         effectDeclaration.parameters
+      ),
+      PositionSpan(
+        effectDeclaration.span.fileId,
+        effectDeclaration.span.startOffset,
+        effectDeclaration.span.startOffset + effectDeclaration.name.length
       )
     )
 
     TypedTree.EffectDeclaration(
       typedIdentifier,
       effectDeclaration.parameters.map(annotateTypeAtParameter),
-      annotateTypeAtExpression(effectDeclaration.body)
+      annotateTypeAtExpression(effectDeclaration.body),
+      effectDeclaration.span
     )
   }
 
@@ -54,13 +64,19 @@ object TypeAnnotate {
       createFunctionType(
         functionDeclaration.returnType,
         functionDeclaration.parameters
+      ),
+      PositionSpan(
+        functionDeclaration.span.fileId,
+        functionDeclaration.span.startOffset,
+        functionDeclaration.span.startOffset + functionDeclaration.name.length
       )
     )
 
     TypedTree.FunctionDeclaration(
       typedIdentifier,
       functionDeclaration.parameters.map(annotateTypeAtParameter),
-      annotateTypeAtExpression(functionDeclaration.body)
+      annotateTypeAtExpression(functionDeclaration.body),
+      functionDeclaration.span
     )
   }
 
@@ -69,8 +85,14 @@ object TypeAnnotate {
   ): TypedTree.Parameter = TypedTree.Parameter(
     TypedTree.TypedIdentifier(
       parameter.identifier,
-      Type.fromString(parameter.`type`)
-    )
+      Type.fromString(parameter.`type`),
+      PositionSpan(
+        parameter.span.fileId,
+        parameter.span.startOffset,
+        parameter.span.startOffset + parameter.identifier.length
+      )
+    ),
+    parameter.span
   )
 
   private def annotateTypeAtExpression(
@@ -82,18 +104,22 @@ object TypeAnnotate {
     case factor: SyntaxTree.Factor => annotateTypeAtFactor(factor)
     case application: SyntaxTree.FunctionApplication =>
       annotateTypeAtFunctionApplication(application)
-    case SyntaxTree.StringLiteral(value) => TypedTree.StringLiteral(value)
-    case SyntaxTree.PrintExpression(expression) =>
-      TypedTree.PrintExpression(annotateTypeAtExpression(expression))
-    case SyntaxTree.ParenthesizedExpression(expression) =>
-      TypedTree.ParenthesizedExpression(annotateTypeAtExpression(expression))
+    case SyntaxTree.StringLiteral(value, span) =>
+      TypedTree.StringLiteral(value, span)
+    case SyntaxTree.PrintExpression(expression, span) =>
+      TypedTree.PrintExpression(annotateTypeAtExpression(expression), span)
+    case SyntaxTree.ParenthesizedExpression(expression, span) =>
+      TypedTree.ParenthesizedExpression(
+        annotateTypeAtExpression(expression),
+        span
+      )
 
   private def annotateTypeAtArithmeticExpression(
       arithmeticExpression: SyntaxTree.ArithmeticExpression
   ): TypedTree.ArithmeticExpression = arithmeticExpression match
-    case SyntaxTree.Operand(left) =>
-      TypedTree.Operand(Type.Variable(), annotateTypeAtTerm(left))
-    case SyntaxTree.BinaryArithmeticExpression(left, right, operator) =>
+    case SyntaxTree.Operand(left, span) =>
+      TypedTree.Operand(Type.Variable(), annotateTypeAtTerm(left), span)
+    case SyntaxTree.BinaryArithmeticExpression(left, right, operator, span) =>
       val mappedOperator = operator match
         case SyntaxTree.ArithmeticExpression.Operator.ADD =>
           TypedTree.ArithmeticExpression.Operator.ADD
@@ -103,14 +129,15 @@ object TypeAnnotate {
         Type.Variable(),
         annotateTypeAtTerm(left),
         annotateTypeAtExpression(right),
-        mappedOperator
+        mappedOperator,
+        span
       )
 
   private def annotateTypeAtTerm(term: SyntaxTree.Term): TypedTree.Term =
     term match
-      case SyntaxTree.UnaryTerm(left) =>
-        TypedTree.UnaryTerm(Type.Variable(), annotateTypeAtFactor(left))
-      case SyntaxTree.BinaryTerm(left, right, operator) =>
+      case SyntaxTree.UnaryTerm(left, span) =>
+        TypedTree.UnaryTerm(Type.Variable(), annotateTypeAtFactor(left), span)
+      case SyntaxTree.BinaryTerm(left, right, operator, span) =>
         val mappedOperator = operator match
           case SyntaxTree.Term.Operator.MULTIPLY =>
             TypedTree.Term.Operator.MULTIPLY
@@ -120,20 +147,31 @@ object TypeAnnotate {
           Type.Variable(),
           annotateTypeAtFactor(left),
           annotateTypeAtExpression(right),
-          mappedOperator
+          mappedOperator,
+          span
         )
 
   private def annotateTypeAtFactor(
       factor: SyntaxTree.Factor
   ): TypedTree.Factor = factor match
-    case SyntaxTree.IntLiteral(literal) => TypedTree.IntLiteral(literal)
+    case SyntaxTree.IntLiteral(literal, span) =>
+      TypedTree.IntLiteral(literal, span)
 
   private def annotateTypeAtFunctionApplication(
       functionApplication: SyntaxTree.FunctionApplication
   ): TypedTree.FunctionApplication =
     TypedTree.FunctionApplication(
-      TypedIdentifier(functionApplication.identifier, Type.Variable()),
-      functionApplication.arguments.map(annotateTypeAtExpression)
+      TypedIdentifier(
+        functionApplication.identifier,
+        Type.Variable(),
+        PositionSpan(
+          functionApplication.span.fileId,
+          functionApplication.span.startOffset,
+          functionApplication.span.startOffset + functionApplication.identifier.length
+        )
+      ),
+      functionApplication.arguments.map(annotateTypeAtExpression),
+      functionApplication.span
     )
 
   private def createFunctionType(
