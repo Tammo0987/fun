@@ -30,11 +30,11 @@ classDeclaration
     ;
 
 effectDeclaration
-    : 'effect' Id parameterList ':' simpleType '=' '{' statement* expression '}'
+    : 'effect' Id parameterList (':' simpleType)? '=' '{' statement* expression '}'
     ;
 
 functionDeclaration
-    : 'fun' Id parameterList ':' simpleType '=' '{' statement* expression '}'
+    : 'fun' Id parameterList (':' simpleType)? '=' '{' statement* expression '}'
     ;
 
 identifierSet

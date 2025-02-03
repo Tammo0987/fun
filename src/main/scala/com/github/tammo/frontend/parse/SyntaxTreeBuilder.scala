@@ -102,7 +102,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   ): SyntaxTree = {
     val name = ctx.Id().getText
     val parameter = readParameterList(ctx.parameterList())
-    val returnType = ctx.simpleType().getText
+    val returnType = Option(ctx.simpleType()).map(_.getText)
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
     EffectDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))
@@ -113,7 +113,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
   ): SyntaxTree = {
     val name = ctx.Id().getText
     val parameter = readParameterList(ctx.parameterList())
-    val returnType = ctx.simpleType().getText
+    val returnType = Option(ctx.simpleType()).map(_.getText)
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
     FunctionDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))

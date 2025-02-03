@@ -59,7 +59,7 @@ object SyntaxTree {
   case class EffectDeclaration(
       name: String,
       parameters: Seq[Parameter],
-      returnType: String,
+      returnType: Option[String],
       body: Expression,
       span: PositionSpan
   ) extends SyntaxTree
@@ -67,7 +67,7 @@ object SyntaxTree {
   case class FunctionDeclaration(
       name: String,
       parameters: Seq[Parameter],
-      returnType: String,
+      returnType: Option[String],
       body: Expression,
       span: PositionSpan
   ) extends SyntaxTree

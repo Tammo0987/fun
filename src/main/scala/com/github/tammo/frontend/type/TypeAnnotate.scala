@@ -175,10 +175,14 @@ object TypeAnnotate {
     )
 
   private def createFunctionType(
-      returnType: String,
+      returnType: Option[String],
       parameters: Seq[SyntaxTree.Parameter]
-  ): Type = parameters.foldRight(Type.fromString(returnType)) { (arg, acc) =>
-    Type.FunctionType(Type.fromString(arg.`type`), acc)
+  ): Type = {
+    val mappedReturnType =
+      returnType.map(Type.fromString).getOrElse(Type.Variable())
+    parameters.foldRight(mappedReturnType) { (arg, acc) =>
+      Type.FunctionType(Type.fromString(arg.`type`), acc)
+    }
   }
 
 }
