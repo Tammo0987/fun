@@ -1,9 +1,9 @@
 package com.github.tammo.frontend.parse
 
-import com.github.tammo.{FunBaseVisitor, FunParser}
 import com.github.tammo.diagnostics.{PositionSpan, SourceFile}
 import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.frontend.ast.SyntaxTree.*
+import com.github.tammo.{FunBaseVisitor, FunParser}
 import org.antlr.v4.runtime.{CommonToken, ParserRuleContext}
 
 import scala.jdk.CollectionConverters.*

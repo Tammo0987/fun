@@ -3,12 +3,10 @@ package com.github.tammo.backend
 import com.github.tammo.backend.CodeGenerationAction.*
 import com.github.tammo.diagnostics.CompilerError
 import com.github.tammo.diagnostics.CompilerError.CodeGenerationError
-import com.github.tammo.frontend.`type`.Type
-import com.github.tammo.frontend.`type`.TypedTree
 import com.github.tammo.frontend.`type`.TypedTree.*
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.MethodVisitor
+import com.github.tammo.frontend.`type`.{Type, TypedTree}
 import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.{ClassWriter, MethodVisitor}
 
 import scala.annotation.tailrec
 

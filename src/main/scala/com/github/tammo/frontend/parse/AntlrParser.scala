@@ -1,9 +1,9 @@
 package com.github.tammo.frontend.parse
 
-import com.github.tammo.frontend.ast.SyntaxTree
-import com.github.tammo.{FunLexer, FunParser}
-import SyntaxTree.CompilationUnit
 import com.github.tammo.diagnostics.SourceFile
+import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.frontend.ast.SyntaxTree.CompilationUnit
+import com.github.tammo.{FunLexer, FunParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
 object AntlrParser extends Parser {
