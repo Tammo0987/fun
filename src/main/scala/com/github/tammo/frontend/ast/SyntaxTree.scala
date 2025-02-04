@@ -4,6 +4,10 @@ import com.github.tammo.diagnostics.PositionSpan
 
 object SyntaxTree {
 
+  sealed trait Declaration extends SyntaxTree {
+    def identifier: String
+  }
+
   sealed trait ExposeDeclaration extends SyntaxTree
 
   sealed trait Expression extends SyntaxTree
@@ -17,7 +21,7 @@ object SyntaxTree {
   case class NamespaceDeclaration(
       identifier: String,
       span: PositionSpan
-  ) extends SyntaxTree
+  ) extends Declaration
 
   case class CompilationUnit(
       namespace: Option[NamespaceDeclaration],
@@ -30,7 +34,7 @@ object SyntaxTree {
       namespace
         .map(_.identifier)
         .map(i => s"$i/")
-        .getOrElse("") + classDeclaration.name
+        .getOrElse("") + classDeclaration.identifier
   }
 
   case class UseDeclaration(
@@ -49,34 +53,34 @@ object SyntaxTree {
   ) extends ExposeDeclaration
 
   case class ClassDeclaration(
-      name: String,
+      identifier: String,
       parameters: Seq[Parameter],
       effects: Seq[EffectDeclaration],
       functions: Seq[FunctionDeclaration],
       span: PositionSpan
-  ) extends SyntaxTree
+  ) extends Declaration
 
   case class EffectDeclaration(
-      name: String,
+      identifier: String,
       parameters: Seq[Parameter],
       returnType: Option[String],
       body: Expression,
       span: PositionSpan
-  ) extends SyntaxTree
+  ) extends Declaration
 
   case class FunctionDeclaration(
-      name: String,
+      identifier: String,
       parameters: Seq[Parameter],
       returnType: Option[String],
       body: Expression,
       span: PositionSpan
-  ) extends SyntaxTree
+  ) extends Declaration
 
   case class Parameter(
       identifier: String,
       `type`: String,
       span: PositionSpan
-  ) extends SyntaxTree
+  ) extends Declaration
 
   case class PrintExpression(
       expression: Expression,

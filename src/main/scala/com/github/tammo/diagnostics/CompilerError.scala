@@ -1,7 +1,8 @@
 package com.github.tammo.diagnostics
 
 import com.github.tammo.frontend.`type`.Type
-import com.github.tammo.frontend.ast.SyntaxTree.FunctionApplication
+import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.frontend.ast.SyntaxTree.{Declaration, FunctionApplication, FunctionDeclaration}
 
 sealed trait CompilerError {
 
@@ -14,7 +15,7 @@ sealed trait CompilerError {
 object CompilerError {
 
   sealed trait PositionedError extends CompilerError {
-    def positionSpan: PositionSpan
+    def positions: Iterable[PositionSpan]
   }
 
   sealed trait ParseError extends CompilerError
@@ -41,18 +42,47 @@ object CompilerError {
       s"Type $leftType is incompatible with type $rightType."
 
     override def level: Level = Level.Error
+
+    override def positions: Iterable[PositionSpan] = Some(positionSpan)
   }
 
   case class FunctionOrEffectNotFound(functionApplication: FunctionApplication)
       extends CompilerError
       with PositionedError {
     override def message: String =
-      s"""Function call or effect call not found for: ${functionApplication.identifier}. 
-         |Did you forget to import it?""".stripMargin
-
-    override def positionSpan: PositionSpan = functionApplication.span
+      s"Function call or effect call not found for: ${functionApplication.identifier}. Did you forget to import it?"
 
     override def level: Level = Level.Error
+
+    override def positions: Iterable[PositionSpan] = Some(
+      functionApplication.span
+    )
+  }
+
+  case class EffectCalledInFunction(
+      functionDeclaration: FunctionDeclaration,
+      effectApplication: FunctionApplication
+  ) extends CompilerError
+      with PositionedError {
+    override def message: String =
+      s"Effect call ${effectApplication.identifier} can't be used in function ${functionDeclaration.identifier}."
+
+    override def level: Level = Level.Error
+
+    override def positions: Iterable[PositionSpan] = Some(
+      effectApplication.span
+    )
+  }
+
+  case class DuplicateDeclaration(left: Declaration, right: Declaration)
+      extends CompilerError
+      with PositionedError {
+    override def message: String =
+      s"Detected duplicate declaration for ${left.identifier} and ${right.identifier}."
+
+    override def level: Level = Level.Error
+
+    override def positions: Iterable[PositionSpan] = Seq(left.span, right.span)
   }
 
   sealed trait CodeGenerationError extends CompilerError {

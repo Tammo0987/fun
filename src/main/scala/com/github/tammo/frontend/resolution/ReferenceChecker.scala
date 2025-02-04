@@ -1,10 +1,10 @@
 package com.github.tammo.frontend.resolution
 
 import com.github.tammo.diagnostics.CompilerError
-import com.github.tammo.diagnostics.CompilerError.FunctionOrEffectNotFound
+import com.github.tammo.diagnostics.CompilerError.{DuplicateDeclaration, EffectCalledInFunction, FunctionOrEffectNotFound}
 import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.frontend.ast.SyntaxTree.*
-import com.github.tammo.frontend.resolution.Symbol.{FunctionSymbol, VariableSymbol}
+import com.github.tammo.frontend.resolution.Symbol.{ClassSymbol, EffectSymbol, FunctionSymbol, VariableSymbol}
 
 object ReferenceChecker {
 
@@ -25,13 +25,17 @@ object ReferenceChecker {
       errors: Seq[CompilerError]
   ) {
 
+    def defineUnique(symbol: Symbol): SymbolTableWithErrors = {
+      table.lookup(symbol.name) match
+        case Some(definedSymbol) =>
+          appendError(
+            DuplicateDeclaration(definedSymbol.declaration, symbol.declaration)
+          )
+        case None => map(_.define(symbol))
+    }
+
     def map(f: SymbolTable => SymbolTable): SymbolTableWithErrors =
       copy(table = f(table))
-
-    def flatMap(
-        f: SymbolTable => SymbolTableWithErrors
-    ): SymbolTableWithErrors =
-      copy(table = f(table).table)
 
     def appendError(error: CompilerError): SymbolTableWithErrors =
       copy(errors = errors :+ error)
@@ -46,6 +50,13 @@ object ReferenceChecker {
         functionApplication.identifier
       ) match
         case Some(_: FunctionSymbol) => table
+        case Some(_: EffectSymbol) =>
+          table.table.currentScope.treeContext match
+            case Some(functionDeclaration: FunctionDeclaration) =>
+              table.appendError(
+                EffectCalledInFunction(functionDeclaration, functionApplication)
+              )
+            case _ => table
         case Some(_) =>
           table.appendError(FunctionOrEffectNotFound(functionApplication))
         case None =>
@@ -54,8 +65,8 @@ object ReferenceChecker {
       checkReferences(unit.classDeclaration, table)
     case declaration: ClassDeclaration =>
       val classSymbolTable = table
-        .map(_.define(Symbol.ClassSymbol(declaration.name)))
-        .map(_.pushScope)
+        .defineUnique(ClassSymbol(declaration))
+        .map(_.pushScope(declaration))
       (declaration.effects ++ declaration.functions)
         .foldLeft[SymbolTableWithErrors](classSymbolTable) {
           (table, function) => checkReferences(function, table)
@@ -63,7 +74,9 @@ object ReferenceChecker {
         .map(_.popScope)
     case declaration: EffectDeclaration =>
       val effectSymbolTable =
-        table.map(_.define(FunctionSymbol(declaration.name))).map(_.pushScope)
+        table
+          .defineUnique(EffectSymbol(declaration))
+          .map(_.pushScope(declaration))
       val withParameters = declaration.parameters
         .foldLeft(effectSymbolTable) { (table, parameter) =>
           checkReferences(parameter, table)
@@ -72,7 +85,9 @@ object ReferenceChecker {
       withBody.map(_.popScope)
     case declaration: FunctionDeclaration =>
       val functionSymbolTable =
-        table.map(_.define(FunctionSymbol(declaration.name))).map(_.pushScope)
+        table
+          .defineUnique(FunctionSymbol(declaration))
+          .map(_.pushScope(declaration))
       val withParameters =
         declaration.parameters.foldLeft(functionSymbolTable) {
           (table, parameter) => checkReferences(parameter, table)
@@ -80,9 +95,7 @@ object ReferenceChecker {
       val withBody = checkReferences(declaration.body, withParameters)
       withBody.map(_.popScope)
     case parameter: Parameter =>
-      table.map(
-        _.define(VariableSymbol(parameter.identifier))
-      )
+      table.defineUnique(VariableSymbol(parameter))
     case _ => table
 
 }

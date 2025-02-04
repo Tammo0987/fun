@@ -1,14 +1,15 @@
 package com.github.tammo.frontend.parse
 
 import com.github.tammo.{FunBaseVisitor, FunParser}
-import com.github.tammo.diagnostics.PositionSpan
+import com.github.tammo.diagnostics.{PositionSpan, SourceFile}
 import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.frontend.ast.SyntaxTree.*
 import org.antlr.v4.runtime.{CommonToken, ParserRuleContext}
 
 import scala.jdk.CollectionConverters.*
 
-class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
+class SyntaxTreeBuilder(sourceFile: SourceFile)
+    extends FunBaseVisitor[SyntaxTree] {
 
   override def visitCompilationUnit(
       ctx: FunParser.CompilationUnitContext
@@ -54,7 +55,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
     val startToken = parserRuleContext.getStart.asInstanceOf[CommonToken]
     val startOffset = startToken.getStartIndex
     val endOffset = startToken.getStopIndex
-    PositionSpan("", startOffset, endOffset)
+    PositionSpan(sourceFile.id, startOffset, endOffset)
   }
 
   override def visitUseDeclaration(
@@ -105,7 +106,18 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
     val returnType = Option(ctx.simpleType()).map(_.getText)
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
-    EffectDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))
+    val startOffset = ctx.getStart.getStartIndex
+    val endOffset = Option(ctx.simpleType())
+      .map(_.getStop.getStopIndex)
+      .getOrElse(ctx.parameterList().getStop.getStopIndex)
+
+    EffectDeclaration(
+      name,
+      parameter,
+      returnType,
+      body,
+      PositionSpan(sourceFile.id, startOffset, endOffset)
+    )
   }
 
   override def visitFunctionDeclaration(
@@ -116,7 +128,18 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
     val returnType = Option(ctx.simpleType()).map(_.getText)
     val body = visitExpression(ctx.expression()).asInstanceOf[Expression]
 
-    FunctionDeclaration(name, parameter, returnType, body, getPositionSpan(ctx))
+    val startOffset = ctx.getStart.getStartIndex
+    val endOffset = Option(ctx.simpleType())
+      .map(_.getStop.getStopIndex)
+      .getOrElse(ctx.parameterList().getStop.getStopIndex)
+
+    FunctionDeclaration(
+      name,
+      parameter,
+      returnType,
+      body,
+      PositionSpan(sourceFile.id, startOffset, endOffset)
+    )
   }
 
   // TODO more work
@@ -224,7 +247,7 @@ class SyntaxTreeBuilder extends FunBaseVisitor[SyntaxTree] {
       .map(i => {
         val startOffset = ctx.Id(i).getSymbol.getStartIndex
         val endOffset = ctx.simpleType(i).getStart.getStopIndex
-        val positionSpan = PositionSpan("", startOffset, endOffset)
+        val positionSpan = PositionSpan(sourceFile.id, startOffset, endOffset)
         Parameter(
           ctx.Id(i).getText,
           ctx.simpleType(i).getText,

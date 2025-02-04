@@ -26,7 +26,7 @@ object TypeAnnotate {
       classDeclaration: SyntaxTree.ClassDeclaration
   ): TypedTree.ClassDeclaration =
     TypedTree.ClassDeclaration(
-      classDeclaration.name,
+      classDeclaration.identifier,
       classDeclaration.effects.map(annotateTypesAtEffectDeclaration),
       classDeclaration.functions.map(annotateTypesAtFunctionDeclaration),
       classDeclaration.span
@@ -36,7 +36,7 @@ object TypeAnnotate {
       effectDeclaration: SyntaxTree.EffectDeclaration
   ): TypedTree.EffectDeclaration = {
     val typedIdentifier = TypedTree.TypedIdentifier(
-      effectDeclaration.name,
+      effectDeclaration.identifier,
       createFunctionType(
         effectDeclaration.returnType,
         effectDeclaration.parameters
@@ -44,7 +44,7 @@ object TypeAnnotate {
       PositionSpan(
         effectDeclaration.span.fileId,
         effectDeclaration.span.startOffset,
-        effectDeclaration.span.startOffset + effectDeclaration.name.length
+        effectDeclaration.span.startOffset + effectDeclaration.identifier.length
       )
     )
 
@@ -60,7 +60,7 @@ object TypeAnnotate {
       functionDeclaration: SyntaxTree.FunctionDeclaration
   ): TypedTree.FunctionDeclaration = {
     val typedIdentifier = TypedTree.TypedIdentifier(
-      functionDeclaration.name,
+      functionDeclaration.identifier,
       createFunctionType(
         functionDeclaration.returnType,
         functionDeclaration.parameters
@@ -68,7 +68,7 @@ object TypeAnnotate {
       PositionSpan(
         functionDeclaration.span.fileId,
         functionDeclaration.span.startOffset,
-        functionDeclaration.span.startOffset + functionDeclaration.name.length
+        functionDeclaration.span.startOffset + functionDeclaration.identifier.length
       )
     )
 

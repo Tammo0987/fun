@@ -12,9 +12,9 @@ import java.nio.file.{Files, Paths}
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val input = getInput
+    val inputSourceFile = getInput("playground/test.fun")
     val parser = AntlrParser
-    val compilationUnit = parser.parse(input)
+    val compilationUnit = parser.parse(inputSourceFile)
     val result = for {
       _ <- ReferenceChecker.checkReferences(
         compilationUnit,
@@ -35,17 +35,16 @@ object Main {
           println(
             CompilerErrorRenderer.render(
               compilerError,
-              SourceFile(
-                Paths.get("playground/test.fun").toAbsolutePath.toString,
-                input
-              )
+              inputSourceFile
             )
           )
         }
   }
 
-  private def getInput: String = {
-    Files.readString(Paths.get("playground/test.fun"))
+  private def getInput(location: String): SourceFile = {
+    val path = Paths.get(location)
+    val sourceId = path.toAbsolutePath.toString
+    SourceFile(sourceId, Files.readString(path))
   }
 
   private def writeCodeToFile(fileName: String, code: Array[Byte]): Unit = {

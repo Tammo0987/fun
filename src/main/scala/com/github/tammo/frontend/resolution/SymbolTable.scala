@@ -1,9 +1,16 @@
 package com.github.tammo.frontend.resolution
 
+import com.github.tammo.frontend.ast.SyntaxTree
+
 case class SymbolTable(scopes: Seq[Scope]) {
 
+  def pushScope(treeContext: SyntaxTree): SymbolTable =
+    copy(scopes =
+      Scope(Map.empty, Some(treeContext), Some(currentScope)) +: scopes
+    )
+
   def pushScope: SymbolTable =
-    copy(scopes = Scope(Map.empty, Some(currentScope)) +: scopes)
+    copy(scopes = Scope(Map.empty, None, Some(currentScope)) +: scopes)
 
   def popScope: SymbolTable =
     copy(scopes = scopes.tail)
@@ -14,8 +21,8 @@ case class SymbolTable(scopes: Seq[Scope]) {
   def lookup(name: String): Option[Symbol] =
     currentScope.lookup(name)
 
-  private def currentScope: Scope =
-    scopes.headOption.getOrElse(Scope(Map.empty, None))
+  def currentScope: Scope =
+    scopes.headOption.getOrElse(Scope(Map.empty, None, None))
 
 }
 

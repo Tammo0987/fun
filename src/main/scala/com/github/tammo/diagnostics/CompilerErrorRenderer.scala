@@ -23,16 +23,18 @@ object CompilerErrorRenderer {
       source: SourceFile
   ): String = error match {
     case pe: PositionedError =>
+      val positionedSourceCode = pe.positions
+        .map(renderSourceCodeForPosition(source, _))
+        .mkString("\n")
       s"""[${renderLevel(error.level)}] ${error.message}$RESET
-         |Source file location: ${source.id}
-         |${renderSourceCode(source, pe.positionSpan)}""".stripMargin
+         |$positionedSourceCode
+         |""".stripMargin
     case _ =>
       s"""[${renderLevel(error.level)}] ${error.message}$RESET
-         |Source file location: ${source.id}
          |""".stripMargin
   }
 
-  private def renderSourceCode(
+  private def renderSourceCodeForPosition(
       source: SourceFile,
       position: PositionSpan
   ): String = {
@@ -43,38 +45,39 @@ object CompilerErrorRenderer {
     val start =
       Math.max(startLine - 3, 0) // Lines are 1-based but array is 0-based
     val end = Math.min(endLine + 2, lines.length)
-    lines
-      .slice(start, end)
-      .zipWithIndex
-      .map { case (lineContent, lineIndex) =>
-        val lineNumber = start + lineIndex + 1
-        if (lineNumber == startLine) {
-          f"$BOLD>$RESET $lineNumber%4d | ${lineContent.zipWithIndex.map { case (c, idx) =>
-              if (idx + 1 == startColumn) {
-                s"$UNDERLINE$c"
-              } else if (lineNumber == endLine && idx + 1 == endColumn) {
-                s"$c$RESET"
-              } else {
-                c
-              }
-            }.mkString}$RESET"
-        } else if (lineNumber > startLine && lineNumber < endLine) {
-          f"$BOLD>$RESET $lineNumber%4d | $UNDERLINE$lineContent$RESET"
-        } else if (lineNumber == endLine) {
-          f"$BOLD>$RESET $lineNumber%4d | ${lineContent.zipWithIndex.map { case (c, idx) =>
-              if (idx == 0) {
-                s"$UNDERLINE$c"
-              } else if (idx + 1 == endColumn) {
-                s"$c$RESET"
-              } else {
-                c
-              }
-            }.mkString}"
-        } else {
-          f"  $lineNumber%4d | $lineContent"
+    s"${source.id}:$startLine:$startColumn\n" +
+      lines
+        .slice(start, end)
+        .zipWithIndex
+        .map { case (lineContent, lineIndex) =>
+          val lineNumber = start + lineIndex + 1
+          if (lineNumber == startLine) {
+            f"$BOLD>$RESET $lineNumber%4d | ${lineContent.zipWithIndex.map { case (c, idx) =>
+                if (idx + 1 == startColumn) {
+                  s"$UNDERLINE$c"
+                } else if (lineNumber == endLine && idx + 1 == endColumn) {
+                  s"$c$RESET"
+                } else {
+                  c
+                }
+              }.mkString}$RESET"
+          } else if (lineNumber > startLine && lineNumber < endLine) {
+            f"$BOLD>$RESET $lineNumber%4d | $UNDERLINE$lineContent$RESET"
+          } else if (lineNumber == endLine) {
+            f"$BOLD>$RESET $lineNumber%4d | ${lineContent.zipWithIndex.map { case (c, idx) =>
+                if (idx == 0) {
+                  s"$UNDERLINE$c"
+                } else if (idx + 1 == endColumn) {
+                  s"$c$RESET"
+                } else {
+                  c
+                }
+              }.mkString}"
+          } else {
+            f"  $lineNumber%4d | $lineContent"
+          }
         }
-      }
-      .mkString("\n")
+        .mkString("\n")
   }
 
   private def renderLevel(level: Level): String = level match {
