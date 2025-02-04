@@ -25,21 +25,28 @@ object Unifier {
 
   def unifyAll(
       constraints: Seq[Constraint]
-  ): Either[TypeCheckError, Substitutions] = {
+  ): Either[Seq[TypeCheckError], Substitutions] = {
     if (constraints.isEmpty) {
       Right(Map.empty)
     } else {
-      constraints.foldLeft[Either[TypeCheckError, Substitutions]](
+      constraints.foldLeft[Either[Seq[TypeCheckError], Substitutions]](
         Right(Map.empty[Type.Variable, Type])
       ) {
         case (Right(substitutions), constraint) =>
-          val result = unify(constraint.left, constraint.right, constraint.span, substitutions)
+          val result = unify(
+            constraint.left,
+            constraint.right,
+            constraint.span,
+            substitutions
+          )
           result match {
-            case right: Right[TypeCheckError, Substitutions] =>
+            case right: Right[Seq[TypeCheckError], Substitutions] =>
               right.map(substitutions ++ _)
-            case typeError: Left[TypeCheckError, Substitutions] => typeError
+            case typeErrors: Left[Seq[TypeCheckError], Substitutions] =>
+              typeErrors
           }
-        case (typeError: Left[TypeCheckError, Substitutions], _) => typeError
+        case (typeErrors: Left[Seq[TypeCheckError], Substitutions], _) =>
+          typeErrors
       }
     }
   }
@@ -49,7 +56,7 @@ object Unifier {
       right: Type,
       positionSpan: PositionSpan,
       substitutions: Substitutions
-  ): Either[TypeCheckError, Substitutions] = {
+  ): Either[Seq[TypeCheckError], Substitutions] = {
     val substitutedLeft = applySubstitution(substitutions, left)
     val substitutedRight = applySubstitution(substitutions, right)
 
@@ -58,9 +65,19 @@ object Unifier {
     } else {
       (substitutedLeft, substitutedRight) match {
         case (leftTypeVariable: Type.Variable, _) =>
-          unifyVariable(leftTypeVariable, substitutedRight, positionSpan, substitutions)
+          unifyVariable(
+            leftTypeVariable,
+            substitutedRight,
+            positionSpan,
+            substitutions
+          )
         case (_, rightTypeVariable: Type.Variable) =>
-          unifyVariable(rightTypeVariable, substitutedLeft, positionSpan, substitutions)
+          unifyVariable(
+            rightTypeVariable,
+            substitutedLeft,
+            positionSpan,
+            substitutions
+          )
         case (
               Type.FunctionType(leftParameter, leftReturnType),
               Type.FunctionType(rightParameter, rightReturnType)
@@ -72,13 +89,26 @@ object Unifier {
           (unifiedParameter, unifiedReturnType) match {
             case (Right(parameter), Right(returnType)) =>
               Right(parameter ++ returnType)
-            case (typeError: Left[TypeCheckError, Substitutions], _) =>
-              typeError
-            case (_, typeError: Left[TypeCheckError, Substitutions]) =>
-              typeError
+            case (
+                  typeErrors: Left[Seq[TypeCheckError], Substitutions],
+                  otherTypeErrors: Left[Seq[TypeCheckError], Substitutions]
+                ) =>
+              Left(typeErrors.value ++ otherTypeErrors.value)
+            case (typeErrors: Left[Seq[TypeCheckError], Substitutions], _) =>
+              typeErrors
+            case (_, typeErrors: Left[Seq[TypeCheckError], Substitutions]) =>
+              typeErrors
           }
         case _ =>
-          Left(IncompatibleTypesError(substitutedLeft, substitutedRight, positionSpan))
+          Left(
+            Seq(
+              IncompatibleTypesError(
+                substitutedLeft,
+                substitutedRight,
+                positionSpan
+              )
+            )
+          )
       }
     }
   }
@@ -88,7 +118,7 @@ object Unifier {
       other: Type,
       positionSpan: PositionSpan,
       substitutions: Substitutions
-  ): Either[TypeCheckError, Substitutions] = {
+  ): Either[Seq[TypeCheckError], Substitutions] = {
     val currentSubstitutions = substitutions.get(variable)
 
     currentSubstitutions match
@@ -113,9 +143,9 @@ object Unifier {
       variable: Type.Variable,
       other: Type,
       substitutions: Substitutions
-  ): Either[TypeCheckError, Substitutions] = {
+  ): Either[Seq[TypeCheckError], Substitutions] = {
     if (occursCheck(variable, other)) {
-      Left(CyclicTypeReferenceError(variable, other))
+      Left(Seq(CyclicTypeReferenceError(variable, other)))
     } else {
       Right(substitutions + (variable -> other))
     }

@@ -1,6 +1,7 @@
 package com.github.tammo.diagnostics
 
 import com.github.tammo.frontend.`type`.Type
+import com.github.tammo.frontend.ast.SyntaxTree.FunctionApplication
 
 sealed trait CompilerError {
 
@@ -38,6 +39,18 @@ object CompilerError {
       with PositionedError {
     override def message: String =
       s"Type $leftType is incompatible with type $rightType."
+
+    override def level: Level = Level.Error
+  }
+
+  case class FunctionOrEffectNotFound(functionApplication: FunctionApplication)
+      extends CompilerError
+      with PositionedError {
+    override def message: String =
+      s"""Function call or effect call not found for: ${functionApplication.identifier}. 
+         |Did you forget to import it?""".stripMargin
+
+    override def positionSpan: PositionSpan = functionApplication.span
 
     override def level: Level = Level.Error
   }

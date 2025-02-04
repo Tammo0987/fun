@@ -5,6 +5,7 @@ import com.github.tammo.diagnostics.{CompilerErrorRenderer, SourceFile}
 import com.github.tammo.frontend.`type`.TypeChecker
 import com.github.tammo.frontend.`type`.TypedTree.CompilationUnit
 import com.github.tammo.frontend.parse.AntlrParser
+import com.github.tammo.frontend.resolution.{ReferenceChecker, SymbolTable}
 
 import java.nio.file.{Files, Paths}
 
@@ -15,6 +16,10 @@ object Main {
     val parser = AntlrParser
     val compilationUnit = parser.parse(input)
     val result = for {
+      _ <- ReferenceChecker.checkReferences(
+        compilationUnit,
+        SymbolTable.globalScopedSymbolTable
+      )
       typedTree <- TypeChecker.typeCheck(compilationUnit)
       code <- JVMCodeGenerator.generate(typedTree.asInstanceOf[CompilationUnit])
     } yield code
@@ -25,16 +30,18 @@ object Main {
           s"playground/${compilationUnit.fullyQualifiedName}.class",
           value
         )
-      case Left(compilerError) =>
-        println(
-          CompilerErrorRenderer.render(
-            compilerError,
-            SourceFile(
-              Paths.get("playground/test.fun").toAbsolutePath.toString,
-              input
+      case Left(compilerErrors) =>
+        compilerErrors.foreach { compilerError =>
+          println(
+            CompilerErrorRenderer.render(
+              compilerError,
+              SourceFile(
+                Paths.get("playground/test.fun").toAbsolutePath.toString,
+                input
+              )
             )
           )
-        )
+        }
   }
 
   private def getInput: String = {

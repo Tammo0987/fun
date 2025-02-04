@@ -2,6 +2,7 @@ package com.github.tammo.backend
 
 import com.github.tammo.backend.CodeGenerationAction.*
 import com.github.tammo.diagnostics.CompilerError
+import com.github.tammo.diagnostics.CompilerError.CodeGenerationError
 import com.github.tammo.frontend.`type`.Type
 import com.github.tammo.frontend.`type`.TypedTree
 import com.github.tammo.frontend.`type`.TypedTree.*
@@ -15,7 +16,7 @@ object JVMCodeGenerator extends CodeGenerator {
 
   override def generate(
       compilationUnit: CompilationUnit
-  ): Either[CompilerError, Array[Byte]] = {
+  ): Either[Seq[CodeGenerationError], Array[Byte]] = {
     val (assembledState, _) =
       generateCodeActions(compilationUnit).run(CodeGenState(Seq.empty, 1))
     val classWriter = new ClassWriter(

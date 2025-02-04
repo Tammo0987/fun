@@ -5,7 +5,7 @@ import com.github.tammo.frontend.ast.SyntaxTree
 
 object TypeChecker {
 
-  def typeCheck(tree: SyntaxTree.CompilationUnit): Either[TypeCheckError, TypedTree] = {
+  def typeCheck(tree: SyntaxTree.CompilationUnit): Either[Seq[TypeCheckError], TypedTree] = {
     val annotatedTypeTree = TypeAnnotate.annotateTypes(tree)
     val constraints = Constraints.collect(annotatedTypeTree)
     Unifier.unifyAll(constraints).map { substitutions =>

@@ -2,25 +2,25 @@ package com.github.tammo.backend
 
 import com.github.tammo.backend.CodeGenerationAction.{BeginMethod, ClassAction, EndMethod, MethodAction}
 import com.github.tammo.diagnostics.CompilerError
-import com.github.tammo.diagnostics.CompilerError.MethodNotCreated
+import com.github.tammo.diagnostics.CompilerError.{CodeGenerationError, MethodNotCreated}
 import org.objectweb.asm.{ClassWriter, MethodVisitor}
 
 object CodeGenerationInterpreter {
 
-  // TODO change to correct error type
   def interpret(
       actions: Seq[CodeGenerationAction],
       classWriter: ClassWriter
-  ): Either[CompilerError, Unit] = {
+  ): Either[Seq[CodeGenerationError], Unit] = {
     val result =
-      actions.foldLeft[(Either[CompilerError, Unit], Option[MethodVisitor])](
-        (Right(()), None)
-      ) {
-        case ((_: Right[CompilerError, Unit], methodVisitor), action) =>
-          interpretAction(action, classWriter, methodVisitor)
-        case ((compilerError: Left[CompilerError, Unit], methodVisitor), _) =>
-          (compilerError, methodVisitor)
-      }
+      actions
+        .foldLeft[(Either[Seq[CodeGenerationError], Unit], Option[MethodVisitor])](
+          (Right(()), None)
+        ) {
+          case ((_: Right[Seq[CodeGenerationError], Unit], methodVisitor), action) =>
+            interpretAction(action, classWriter, methodVisitor)
+          case ((compilerErrors: Left[Seq[CodeGenerationError], Unit], methodVisitor), _) =>
+            (compilerErrors, methodVisitor)
+        }
 
     result._1
   }
@@ -29,7 +29,7 @@ object CodeGenerationInterpreter {
       action: CodeGenerationAction,
       classWriter: ClassWriter,
       methodVisitor: Option[MethodVisitor]
-  ): (Either[CompilerError, Unit], Option[MethodVisitor]) = action match
+  ): (Either[Seq[CodeGenerationError], Unit], Option[MethodVisitor]) = action match
     case ClassAction(f) => (Right(f(classWriter)), methodVisitor)
     case BeginMethod(access, name, descriptor) =>
       val newMethodVisitor = classWriter.visitMethod(
@@ -46,8 +46,10 @@ object CodeGenerationInterpreter {
         case None =>
           (
             Left(
-              MethodNotCreated(
-                "Tried to generate code for a method, but method never started."
+              Seq(
+                MethodNotCreated(
+                  "Tried to generate code for a method, but method never started."
+                )
               )
             ),
             methodVisitor
