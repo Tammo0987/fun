@@ -1,6 +1,7 @@
 package com.github.tammo.frontend.parse
 
-import com.github.tammo.diagnostics.{PositionSpan, SourceFile}
+import com.github.tammo.core.SourceFile
+import com.github.tammo.diagnostics.PositionSpan
 import com.github.tammo.frontend.ast.SyntaxTree
 import com.github.tammo.frontend.ast.SyntaxTree.*
 import com.github.tammo.{FunBaseVisitor, FunParser}

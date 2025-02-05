@@ -1,4 +1,4 @@
-package com.github.tammo.diagnostics
+package com.github.tammo.core
 
 import java.util
 

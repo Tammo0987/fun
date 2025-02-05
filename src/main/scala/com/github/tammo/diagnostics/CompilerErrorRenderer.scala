@@ -1,5 +1,6 @@
 package com.github.tammo.diagnostics
 
+import com.github.tammo.core.SourceFile
 import com.github.tammo.diagnostics.CompilerError.PositionedError
 
 object CompilerErrorRenderer {

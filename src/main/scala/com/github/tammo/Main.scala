@@ -1,37 +1,52 @@
 package com.github.tammo
 
 import com.github.tammo.backend.JVMCodeGenerator
-import com.github.tammo.diagnostics.{CompilerErrorRenderer, SourceFile}
-import com.github.tammo.frontend.`type`.TypeChecker
-import com.github.tammo.frontend.`type`.TypedTree.CompilationUnit
-import com.github.tammo.frontend.parse.AntlrParser
-import com.github.tammo.frontend.resolution.{ReferenceChecker, SymbolTable}
+import com.github.tammo.core.{Invalid, SourceFile, Valid}
+import com.github.tammo.diagnostics.CompilerErrorRenderer
+import com.github.tammo.frontend.InputPhase
+import com.github.tammo.frontend.`type`.{TypeChecker, TypedTree}
+import com.github.tammo.frontend.ast.SyntaxTree
+import com.github.tammo.frontend.parse.ParserPhase
+import com.github.tammo.frontend.resolution.SemanticAnalysesPhase
 
 import java.nio.file.{Files, Paths}
 
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val inputSourceFile = getInput("playground/test.fun")
-    val parser = AntlrParser
-    val compilationUnit = parser.parse(inputSourceFile)
-    val result = for {
-      _ <- ReferenceChecker.checkReferences(
-        compilationUnit,
-        SymbolTable.globalScopedSymbolTable
-      )
-      typedTree <- TypeChecker.typeCheck(compilationUnit)
-      code <- JVMCodeGenerator.generate(typedTree.asInstanceOf[CompilationUnit])
-    } yield code
+    val compilationResult = for {
+      sourceFile <- InputPhase.run("playground/test.fun")
+      compilationUnit <- ParserPhase.run(sourceFile)
+      _ <- SemanticAnalysesPhase.run(compilationUnit)
+    } yield compilationUnit
 
-    result match
-      case Right(value) =>
-        writeCodeToFile(
-          s"playground/${compilationUnit.fullyQualifiedName}.class",
-          value
-        )
-      case Left(compilerErrors) =>
-        compilerErrors.foreach { compilerError =>
+    val inputSourceFile = getInput("playground/test.fun")
+
+    compilationResult match
+      case Valid(compilationUnit) =>
+        val result = for {
+          typedTree <- TypeChecker.typeCheck(compilationUnit)
+          code <- JVMCodeGenerator.generate(
+            typedTree.asInstanceOf[TypedTree.CompilationUnit]
+          )
+        } yield code
+        result match
+          case Right(value) =>
+            writeCodeToFile(
+              s"playground/${compilationUnit.fullyQualifiedName}.class",
+              value
+            )
+          case Left(compilerErrors) =>
+            compilerErrors.foreach { compilerError =>
+              println(
+                CompilerErrorRenderer.render(
+                  compilerError,
+                  inputSourceFile
+                )
+              )
+            }
+      case Invalid(errors) =>
+        errors.foreach { compilerError =>
           println(
             CompilerErrorRenderer.render(
               compilerError,
@@ -39,6 +54,7 @@ object Main {
             )
           )
         }
+
   }
 
   private def getInput(location: String): SourceFile = {
