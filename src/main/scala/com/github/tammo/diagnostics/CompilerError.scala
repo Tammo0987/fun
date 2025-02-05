@@ -50,7 +50,7 @@ object CompilerError {
       extends CompilerError
       with PositionedError {
     override def message: String =
-      s"Function call or effect call not found for: ${functionApplication.identifier}. Did you forget to import it?"
+      s"Function or effect call \"${functionApplication.identifier}\" not found. Did you forget to import it?"
 
     override def level: Level = Level.Error
 
@@ -65,7 +65,7 @@ object CompilerError {
   ) extends CompilerError
       with PositionedError {
     override def message: String =
-      s"Effect call ${effectApplication.identifier} can't be used in function ${functionDeclaration.identifier}."
+      s"The effect \"${effectApplication.identifier}\" can't be used in the function \"${functionDeclaration.identifier}\". Effects can only be used in other effects."
 
     override def level: Level = Level.Error
 
@@ -78,7 +78,7 @@ object CompilerError {
       extends CompilerError
       with PositionedError {
     override def message: String =
-      s"Detected duplicate declaration for ${left.identifier} and ${right.identifier}."
+      s"Detected duplicate declaration for \"${left.identifier}\"."
 
     override def level: Level = Level.Error
 
